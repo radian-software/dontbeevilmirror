@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "dontbeevilmirror"
+version = "0.1.0"
+description = "Download APKs from Google Play without Google account"
+authors = ["Radian LLC <ops+dontbeevilmirror@radian.codes>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
