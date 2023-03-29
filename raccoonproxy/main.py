@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import base64
 import gzip
 import re
 import subprocess
@@ -53,7 +54,8 @@ def proxy(path):
         f"https://{args.upstream}/{path}{query}",
         *[f"-H{key}: {value}" for key, value in upstream_headers.items()],
         "--body",
-        body,
+        base64.b64encode(body),
+        "--body-base64",
     ]
     upstream_resp = subprocess.run(
         cmd,

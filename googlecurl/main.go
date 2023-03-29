@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,10 +21,11 @@ import (
 const googleJA3 = "769,4-5-47-53-49154-49156-49157-49164-49166-49167-49159-49161-49162-49169-49171-49172-51-57-50-56-10-49155-49165-49160-49170-22-19-9-21-18-3-8-20-17-255,11-10,14-13-25-11-12-24-9-10-22-23-8-6-7-20-21-4-5-18-19-1-2-3-15-16-17,0-1-2"
 
 var args struct {
-	URL     string   `arg:"" help:"Fully qualified URL to contact"`
-	Method  string   `short:"X" name:"method" help:"HTTP method to use" default:"GET"`
-	Headers []string `sep:"none" short:"H" name:"header" help:"Additional http headers in format 'Header: Value'"`
-	Body    string   `name:"body" help:"Request body, must be UTF-8 due to limitation in argument parser"`
+	URL        string   `arg:"" help:"Fully qualified URL to contact"`
+	Method     string   `short:"X" name:"method" help:"HTTP method to use" default:"GET"`
+	Headers    []string `sep:"none" short:"H" name:"header" help:"Additional http headers in format 'Header: Value'"`
+	Body       string   `name:"body" help:"Request body, must be UTF-8 due to limitation in argument parser"`
+	BodyBase64 bool     `name:"body-base64" help:"Assume request body is base64 encoded, so null bytes can be used"`
 }
 
 func mainE() error {
@@ -45,11 +47,19 @@ func mainE() error {
 	if err != nil {
 		return err
 	}
+	parsedBody := []byte(args.Body)
+	if args.BodyBase64 {
+		encoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(parsedBody))
+		parsedBody, err = ioutil.ReadAll(encoder)
+		if err != nil {
+			return err
+		}
+	}
 	req := http.Request{
 		Method: args.Method,
 		URL:    parsedURL,
 		Header: parsedHeaders,
-		Body:   ioutil.NopCloser(bytes.NewReader([]byte(args.Body))),
+		Body:   ioutil.NopCloser(bytes.NewReader(parsedBody)),
 	}
 	client, err := ja3transport.NewWithString(googleJA3)
 	if err != nil {
