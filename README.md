@@ -16,3 +16,11 @@ backend, these requests are anonymized and filtered through a shared
 Google account that I have registered for the project. Furthermore,
 once an app is downloaded once, a copy is saved so that future
 downloads don't go to Google.
+
+## Credits
+
+The reverse-engineered logic for accessing the Google Play API was
+determined by inspection of the code of
+[Raccoon](https://github.com/onyxbits/raccoon4), which is provided
+under the terms of the [Apache
+License](https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/LICENSE).
