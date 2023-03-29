@@ -22,7 +22,7 @@ const googleJA3 = "769,4-5-47-53-49154-49156-49157-49164-49166-49167-49159-49161
 var args struct {
 	URL     string   `arg:"" help:"Fully qualified URL to contact"`
 	Method  string   `short:"X" name:"method" help:"HTTP method to use" default:"GET"`
-	Headers []string `short:"H" name:"header" help:"Additional http headers in format 'Header: Value'"`
+	Headers []string `sep:"none" short:"H" name:"header" help:"Additional http headers in format 'Header: Value'"`
 	Body    string   `name:"body" help:"Request body, must be UTF-8 due to limitation in argument parser"`
 }
 

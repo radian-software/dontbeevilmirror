@@ -2,13 +2,11 @@
 
 import argparse
 import gzip
-import ssl
+import re
+import subprocess
+import sys
 
 import flask
-import requests
-import requests.adapters
-import urllib3.poolmanager
-import urllib3.util.ssl_
 
 
 JA3 = "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
@@ -17,27 +15,7 @@ JA3 = "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-5
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int, default=8443)
 parser.add_argument("-u", "--upstream", type=str, default="android.clients.google.com")
-parser.add_argument("-k", "--insecure", action="store_true")
 args = parser.parse_args()
-
-
-# https://github.com/marty0678/googleplay-api/blob/aa193ea198ac789f2b7d7a6650174078a93710a5/gpapi/googleplay.py#L46-L64
-
-
-class GoogleSSLContext(ssl.SSLContext):
-    def set_alpn_protocols(self, protocols):
-        pass
-
-
-class GoogleAuthHTTPAdapter(requests.adapters.HTTPAdapter):
-    def init_poolmanager(self, *args, **kwargs):
-        context = GoogleSSLContext()
-        context.set_ciphers(urllib3.util.ssl_.DEFAULT_CIPHERS)
-        context.verify_mode = ssl.CERT_REQUIRED
-        context.options &= ~0x4000
-        self.poolmanager = urllib3.poolmanager.PoolManager(
-            *args, ssl_context=context, **kwargs
-        )
 
 
 HTTP_METHODS = [
@@ -51,9 +29,6 @@ HTTP_METHODS = [
     "TRACE",
     "PATCH",
 ]
-
-session = requests.session()
-session.mount("https://", GoogleAuthHTTPAdapter())
 
 app = flask.Flask(__name__)
 
@@ -71,23 +46,38 @@ def proxy(path):
     upstream_headers["Host"] = args.upstream
     for key, val in upstream_headers.items():
         print(f"  {key}: {val}")
-    upstream_resp = session.request(
+    cmd = [
+        "googlecurl",
+        "-X",
         flask.request.method,
         f"https://{args.upstream}/{path}{query}",
-        headers=upstream_headers,
-        data=body,
-        stream=True,
-        **({"verify": False} if args.insecure else {}),
+        *[f"-H{key}: {value}" for key, value in upstream_headers.items()],
+    ]
+    upstream_resp = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
-    resp_body = b""
-    for chunk in upstream_resp.raw.stream(1024, decode_content=False):
-        if chunk:
-            resp_body += chunk
-    print(f"Got {upstream_resp.status_code}")
-    for key, val in upstream_resp.headers.items():
+    sys.stderr.buffer.write(upstream_resp.stderr)
+    if upstream_resp.returncode != 0:
+        raise subprocess.CalledProcessError(
+            returncode=upstream_resp.returncode, cmd=cmd
+        )
+    resp_body = upstream_resp.stdout
+    status_code = int(
+        re.search(r"(?m)^status ([0-9]+)", str(upstream_resp.stderr)).group(  # type: ignore
+            1
+        )
+    )
+    upstream_resp_headers = {
+        m[1]: m[2]
+        for m in re.findall(r"(?m)^header ([^:]+): (.+)", str(upstream_resp.stderr))
+    }
+    print(f"Got {status_code}")
+    for key, val in upstream_resp_headers.items():
         print(f"  {key}: {val}")
-    resp = flask.make_response(resp_body, upstream_resp.status_code)
-    for key, val in upstream_resp.headers.items():
+    resp = flask.make_response(resp_body, status_code)
+    for key, val in upstream_resp_headers.items():
         if key.lower() not in {"transfer-encoding", "content-length"}:
             resp.headers[key] = val
     nice_resp_body = resp_body
