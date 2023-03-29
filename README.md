@@ -24,3 +24,13 @@ determined by inspection of the code of
 [Raccoon](https://github.com/onyxbits/raccoon4), which is provided
 under the terms of the [Apache
 License](https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/LICENSE).
+
+Adaption to Python was aided by inspection of the code of
+[googleplay-api](https://github.com/marty0678/googleplay-api), which
+is provided under the terms of the [BSD License and GNU Public
+License](https://github.com/marty0678/googleplay-api/blob/master/LICENSE.md).
+Note that no code is incorporated from this project, and copy-left
+provisions do not apply since, under U.S. law, implementations are not
+creative works and hence not copyrightable when they are the only
+possible way to accomplish the task at hand (e.g. satisfying Google
+authentication requirements).

@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "racoonproxy"
+name = "raccoonproxy"
 version = "0.1.0"
 description = "Dev proxy for reverse engineering Raccoon"
 authors = ["Radian LLC <contact+dontbeevilproxy@radian.codes>"]
