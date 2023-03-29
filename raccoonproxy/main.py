@@ -52,26 +52,28 @@ def proxy(path):
         flask.request.method,
         f"https://{args.upstream}/{path}{query}",
         *[f"-H{key}: {value}" for key, value in upstream_headers.items()],
+        "--body",
+        body,
     ]
     upstream_resp = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    sys.stderr.buffer.write(upstream_resp.stderr)
     if upstream_resp.returncode != 0:
+        sys.stderr.buffer.write(upstream_resp.stderr)
         raise subprocess.CalledProcessError(
             returncode=upstream_resp.returncode, cmd=cmd
         )
     resp_body = upstream_resp.stdout
     status_code = int(
-        re.search(r"(?m)^status ([0-9]+)", str(upstream_resp.stderr)).group(  # type: ignore
+        re.search(r"(?m)^status ([0-9]+)", upstream_resp.stderr.decode()).group(  # type: ignore
             1
         )
     )
     upstream_resp_headers = {
-        m[1]: m[2]
-        for m in re.findall(r"(?m)^header ([^:]+): (.+)", str(upstream_resp.stderr))
+        m[0]: m[1]
+        for m in re.findall(r"(?m)^header ([^:]+): (.+)", upstream_resp.stderr.decode())
     }
     print(f"Got {status_code}")
     for key, val in upstream_resp_headers.items():
@@ -81,7 +83,7 @@ def proxy(path):
         if key.lower() not in {"transfer-encoding", "content-length"}:
             resp.headers[key] = val
     nice_resp_body = resp_body
-    if resp.headers["content-encoding"] == "gzip":
+    if resp.headers.get("content-encoding") == "gzip":
         nice_resp_body = gzip.decompress(nice_resp_body)
     print(f"RES BODY ({len(nice_resp_body)} chars): {nice_resp_body}")
     return resp
