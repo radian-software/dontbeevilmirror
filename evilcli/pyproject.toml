@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "evilcli"
+version = "0.1.0"
+description = "Command-line interface for downloading APKs from Google Play using account credentials"
+authors = ["Radian LLC <ops+dontbeevilmirror@radian.codes>"]
+readme = "../README.md"
+packages = [
+  { include = "dontbeevilmirror" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^1.0.0"
+gplayapi = {path = "../gplayapi", develop = true}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

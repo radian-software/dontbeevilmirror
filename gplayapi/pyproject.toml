@@ -1,9 +1,12 @@
 [tool.poetry]
-name = "dontbeevilmirror"
+name = "gplayapi"
 version = "0.1.0"
-description = "Download APKs from Google Play without Google account"
+description = "Library for searching and downloading APKs from Google Play using account credentials"
 authors = ["Radian LLC <ops+dontbeevilmirror@radian.codes>"]
-readme = "README.md"
+readme = "../README.md"
+packages = [
+  { include = "dontbeevilmirror" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
