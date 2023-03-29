@@ -10,9 +10,6 @@ import sys
 import flask
 
 
-JA3 = "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int, default=8443)
 parser.add_argument("-u", "--upstream", type=str, default="android.clients.google.com")
