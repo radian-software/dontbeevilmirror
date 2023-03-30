@@ -1,6 +1,7 @@
 *.crt
 *.key
 *.pyc
+*_pb2.py
 .env
 __pycache__
 googlecurl/googlecurl

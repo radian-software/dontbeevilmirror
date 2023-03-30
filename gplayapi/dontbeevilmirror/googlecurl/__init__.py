@@ -41,7 +41,9 @@ def request(
     stderr = result.stderr.decode()
     status_code_match = re.search(r"(?m)^status ([0-9]+)", stderr)
     try:
-        status_code = int(status_code_match.group(1))  # type: ignore
+        if not status_code_match:
+            raise ValueError
+        status_code = int(status_code_match.group(1))
     except (AttributeError, ValueError) as _:
         raise RuntimeError(
             f"unable to parse output from googlecurl subprocess: {repr(stderr)}"

@@ -65,11 +65,11 @@ def proxy(path):
             returncode=upstream_resp.returncode, cmd=cmd
         )
     resp_body = upstream_resp.stdout
-    status_code = int(
-        re.search(r"(?m)^status ([0-9]+)", upstream_resp.stderr.decode()).group(  # type: ignore
-            1
-        )
+    status_code_match = re.search(
+        r"(?m)^status ([0-9]+)", upstream_resp.stderr.decode()
     )
+    assert status_code_match
+    status_code = int(status_code_match.group(1))
     upstream_resp_headers = {
         m[0]: m[1]
         for m in re.findall(r"(?m)^header ([^:]+): (.+)", upstream_resp.stderr.decode())
