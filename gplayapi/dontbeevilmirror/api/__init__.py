@@ -1,4 +1,5 @@
 import base64
+from dataclasses import dataclass
 import struct
 
 from cryptography.hazmat.primitives import hashes
@@ -49,6 +50,13 @@ GOOGLE_PUBLIC_KEY = GooglePublicKey(
 )
 
 
+@dataclass
+class AuthInfo:
+
+    auth: str
+    token: str
+
+
 class GooglePlay:
     def __init__(self, email, password):
         self.email = email
@@ -74,4 +82,12 @@ class GooglePlay:
                 "lang": "en",
             },
         )
-        print(resp)
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"Got status code {resp.status_code} from /auth endpoint"
+            )
+        info = {}
+        for line in resp.content.decode().splitlines():
+            key, value = line.split("=", 1)
+            info[key] = value
+        return AuthInfo(auth=info["Auth"], token=info["Token"])
