@@ -2,6 +2,7 @@ import base64
 from dataclasses import dataclass
 import re
 import subprocess
+import urllib.parse
 
 
 from requests.structures import CaseInsensitiveDict
@@ -14,7 +15,16 @@ class Response:
     content: bytes
 
 
-def request(method, url, *, data=b"", headers={}):
+def request(
+    method, url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}
+):
+    if isinstance(data, dict):
+        data = urllib.parse.urlencode(data).encode()
+        if not CaseInsensitiveDict(headers).get("content-type"):
+            headers = {
+                **headers,
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            }
     result = subprocess.run(
         [
             "googlecurl",
@@ -42,21 +52,21 @@ def request(method, url, *, data=b"", headers={}):
     return Response(status_code, resp_headers, stdout)
 
 
-def delete(url, **kwargs):
-    return request("DELETE", url, **kwargs)
+def delete(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
+    return request("DELETE", url, data=data, headers=headers)
 
 
-def get(url, **kwargs):
-    return request("GET", url, **kwargs)
+def get(url, *, headers: dict[str, str] = {}):
+    return request("GET", url, headers=headers)
 
 
-def patch(url, **kwargs):
-    return request("PATCH", url, **kwargs)
+def patch(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
+    return request("PATCH", url, data=data, headers=headers)
 
 
-def post(url, **kwargs):
-    return request("POST", url, **kwargs)
+def post(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
+    return request("POST", url, data=data, headers=headers)
 
 
-def put(url, **kwargs):
-    return request("PUT", url, **kwargs)
+def put(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
+    return request("PUT", url, data=data, headers=headers)
