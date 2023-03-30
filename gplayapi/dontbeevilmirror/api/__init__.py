@@ -5,3 +5,6 @@ class GooglePlay:
 
     def login(self):
         pass
+
+    def _do_auth(self):
+        pass
