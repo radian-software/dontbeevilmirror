@@ -56,10 +56,18 @@ GOOGLE_PUBLIC_KEY = GooglePublicKey(
 
 
 @dataclass
-class AuthInfo:
+class InitialAuthInfo:
 
     auth: str
     token: str
+    created: int
+
+
+@dataclass
+class AuthInfo:
+
+    auth: str
+    created: int
 
 
 @dataclass
@@ -68,15 +76,22 @@ class CheckinInfo:
     android_id: str
     security_token: str
     consistency_token: str
+    created: int
+
+
+@dataclass
+class App:
+
+    pass
 
 
 class GooglePlay:
-    def __init__(self):
-        self.email = None
-        self.password = None
-        self.auth_info = None
+    email: str
+    password: str
+    auth_info: AuthInfo
+    checkin_info: CheckinInfo
 
-    def _do_auth(self):
+    def _do_initial_auth(self):
         resp = googlecurl.post(
             "https://android.clients.google.com/auth",
             data={
@@ -101,7 +116,35 @@ class GooglePlay:
         for line in resp.content.decode().splitlines():
             key, value = line.split("=", 1)
             info[key] = value
-        self.auth_info = AuthInfo(auth=info["Auth"], token=info["Token"])
+        self.initial_auth_info = InitialAuthInfo(
+            auth=info["Auth"],
+            token=info["Token"],
+            created=int(datetime.datetime.now().timestamp()),
+        )
+
+    def _do_auth(self):
+        resp = googlecurl.post(
+            "https://android.clients.google.com/auth",
+            data={
+                "Authorization": f"GoogleLogin auth={self.initial_auth_info.auth}",
+                "Token": self.initial_auth_info.token,
+                "token_request_options": "CAA4AQ==",
+                "service": "androidmarket",
+                "accountType": "HOSTED_OR_GOOGLE",
+                "app": "com.android.vending",
+            },
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"Got status code {resp.status_code} from /auth endpoint"
+            )
+        info = {}
+        for line in resp.content.decode().splitlines():
+            key, value = line.split("=", 1)
+            info[key] = value
+        self.auth_info = AuthInfo(
+            auth=info["Auth"], created=int(datetime.datetime.now().timestamp())
+        )
 
     # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/Utils.java#L176-L203
     def _get_checkin_request(self):
@@ -173,4 +216,30 @@ class GooglePlay:
             android_id=f"{resp_msg.androidId:0{16}x}",
             security_token=f"{resp_msg.securityToken:0{16}x}",
             consistency_token=resp_msg.deviceCheckinConsistencyToken,
+            created=int(datetime.datetime.now().timestamp()),
         )
+
+    def search(self, query):
+        # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L754-L772
+        resp = googlecurl.get(
+            "https://android.clients.google.com/fdfe/search",
+            params={
+                "c": "3",
+                "q": query,
+            },
+            headers={
+                "Accept-Language": "en-EN",
+                "Authorization": f"GoogleLogin auth={self.auth_info.auth}",
+                "X-DFE-Enabled-Experiments": "cl:billing.select_add_instrument_by_default",
+                "X-DFE-Unsupported-Experiments": "nocache:billing.use_charging_poller,market_emails,buyer_currency,prod_baseline,checkin.set_asset_paid_app_field,shekel_test,content_ratings,buyer_currency_in_app,nocache:encrypted_apk,recent_changes",
+                "X-DFE-Device-Id": self.checkin_info.android_id,
+                "X-DFE-Client-Id": "am-android-google",
+                # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L154
+                "User-Agent": "Android-Finsky/30.2.18-21 (api=3,versionCode=83021810,sdk=31,device=r9q,hardware=qcom,product=r9qxeea,platformVersionRelease=12,model=SM-G990B,buildId=SP1A.210812.016)",
+                "X-DFE-SmallestScreenWidthDp": "320",
+                "X-DFE-Filter-Level": "3",
+            },
+        )
+        resp_msg: Any = pb.ResponseWrapper()
+        resp_msg.ParseFromString(resp.content)
+        print(resp)

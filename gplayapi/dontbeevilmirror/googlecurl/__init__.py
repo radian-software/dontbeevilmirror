@@ -16,7 +16,12 @@ class Response:
 
 
 def request(
-    method, url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}
+    method,
+    url,
+    *,
+    data: (bytes | dict[str, str]) = b"",
+    headers: dict[str, str] = {},
+    params: dict[str, str] = {},
 ):
     if isinstance(data, dict):
         data = urllib.parse.urlencode(data).encode()
@@ -25,6 +30,12 @@ def request(
                 **headers,
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             }
+    if params:
+        if "?" in url:
+            raise RuntimeError(
+                "can't use extra query params with url that already has query string"
+            )
+        url += "?" + urllib.parse.urlencode(params)
     result = subprocess.run(
         [
             "googlecurl",
@@ -54,21 +65,45 @@ def request(
     return Response(status_code, resp_headers, stdout)
 
 
-def delete(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
-    return request("DELETE", url, data=data, headers=headers)
+def delete(
+    url,
+    *,
+    data: (bytes | dict[str, str]) = b"",
+    headers: dict[str, str] = {},
+    params: dict[str, str] = {},
+):
+    return request("DELETE", url, data=data, headers=headers, params=params)
 
 
-def get(url, *, headers: dict[str, str] = {}):
-    return request("GET", url, headers=headers)
+def get(url, *, headers: dict[str, str] = {}, params: dict[str, str] = {}):
+    return request("GET", url, headers=headers, params=params)
 
 
-def patch(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
-    return request("PATCH", url, data=data, headers=headers)
+def patch(
+    url,
+    *,
+    data: (bytes | dict[str, str]) = b"",
+    headers: dict[str, str] = {},
+    params: dict[str, str] = {},
+):
+    return request("PATCH", url, data=data, headers=headers, params=params)
 
 
-def post(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
-    return request("POST", url, data=data, headers=headers)
+def post(
+    url,
+    *,
+    data: (bytes | dict[str, str]) = b"",
+    headers: dict[str, str] = {},
+    params: dict[str, str] = {},
+):
+    return request("POST", url, data=data, headers=headers, params=params)
 
 
-def put(url, *, data: (bytes | dict[str, str]) = b"", headers: dict[str, str] = {}):
-    return request("PUT", url, data=data, headers=headers)
+def put(
+    url,
+    *,
+    data: (bytes | dict[str, str]) = b"",
+    headers: dict[str, str] = {},
+    params: dict[str, str] = {},
+):
+    return request("PUT", url, data=data, headers=headers, params=params)
