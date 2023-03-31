@@ -229,6 +229,17 @@ files = [
 ]
 
 [[package]]
+name = "jsonnet"
+version = "0.19.1"
+description = "Python bindings for Jsonnet - The data templating language"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "jsonnet-0.19.1.tar.gz", hash = "sha256:1728dea70933f0ae1e9355cdafc99dd296ae5c7457b374e2df4e94595e2a8115"},
+]
+
+[[package]]
 name = "protobuf"
 version = "3.20.3"
 description = "Protocol Buffers"
@@ -314,4 +325,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c5f2bfcaec5b54cecbd4e7facf5750185b7acc3941377d2b392c00ddb2f80e21"
+content-hash = "17f1025b52bb82309880a2c34ed54fc524bccf4715af11be89cd661ebdbf4246"

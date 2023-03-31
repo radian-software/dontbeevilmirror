@@ -1,6 +1,8 @@
 import base64
 from dataclasses import dataclass
 import datetime
+import json
+import re
 import struct
 from typing import Any
 
@@ -8,6 +10,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 from cryptography.hazmat.primitives.serialization import load_der_public_key
+import _jsonnet
+import requests
 
 from dontbeevilmirror import googlecurl
 from dontbeevilmirror.api import constants
@@ -82,7 +86,17 @@ class CheckinInfo:
 @dataclass
 class App:
 
-    pass
+    id: str
+    author: str
+    name: str
+    category: str
+    downloads: int
+    rating: float
+    icon_url: str
+    description: str
+    screenshot_urls: list[str]
+    free: bool
+    price: str
 
 
 class GooglePlay:
@@ -220,26 +234,36 @@ class GooglePlay:
         )
 
     def search(self, query):
-        # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L754-L772
-        resp = googlecurl.get(
-            "https://android.clients.google.com/fdfe/search",
+        resp = requests.get(
+            "https://play.google.com/store/search",
             params={
-                "c": "3",
                 "q": query,
-            },
-            headers={
-                "Accept-Language": "en-EN",
-                "Authorization": f"GoogleLogin auth={self.auth_info.auth}",
-                "X-DFE-Enabled-Experiments": "cl:billing.select_add_instrument_by_default",
-                "X-DFE-Unsupported-Experiments": "nocache:billing.use_charging_poller,market_emails,buyer_currency,prod_baseline,checkin.set_asset_paid_app_field,shekel_test,content_ratings,buyer_currency_in_app,nocache:encrypted_apk,recent_changes",
-                "X-DFE-Device-Id": self.checkin_info.android_id,
-                "X-DFE-Client-Id": "am-android-google",
-                # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L154
-                "User-Agent": "Android-Finsky/30.2.18-21 (api=3,versionCode=83021810,sdk=31,device=r9q,hardware=qcom,product=r9qxeea,platformVersionRelease=12,model=SM-G990B,buildId=SP1A.210812.016)",
-                "X-DFE-SmallestScreenWidthDp": "320",
-                "X-DFE-Filter-Level": "3",
+                "c": "apps",
             },
         )
-        resp_msg: Any = pb.ResponseWrapper()
-        resp_msg.ParseFromString(resp.content)
-        print(resp)
+        match = re.search(r"(?s).*AF_initDataCallback\((.+?)\);</script>", resp.text)
+        if not match:
+            raise RuntimeError(
+                "Failed to locate AF_initDataCallback in Google Play search response"
+            )
+        data = json.loads(_jsonnet.evaluate_snippet("snippet", match.group(1)))
+        toplevel = data["data"][0][1][0][-1][0]
+        apps = []
+        for entry in toplevel:
+            entry = entry[0]
+            apps.append(
+                App(
+                    id=entry[0][0],
+                    icon_url=entry[1][3][2],
+                    screenshot_urls=[x[3][2] for x in entry[2]],
+                    name=entry[3],
+                    rating=entry[4][1],
+                    category=entry[5],
+                    free=entry[8][1][0][0] == 0,
+                    price=entry[8][1][0][2],
+                    description=entry[13][1],
+                    author=entry[14],
+                    downloads=entry[15],
+                )
+            )
+        return apps
