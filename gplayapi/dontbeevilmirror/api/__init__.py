@@ -275,7 +275,7 @@ class GooglePlay:
                 f"Got status code {resp.status_code} from /checkin endpoint"
             )
 
-    def search(self, query):
+    def search(self, query: str):
         resp = requests.get(
             "https://play.google.com/store/search",
             params={
@@ -310,25 +310,30 @@ class GooglePlay:
             )
         return apps
 
-    def details(self, app_id):
-        # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L754-L772
-        resp = googlecurl.get(
-            "https://android.clients.google.com/fdfe/details",
-            params={
-                "doc": app_id,
-            },
+    def get_details(self, *app_ids: list[str]):
+        # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L390-L397
+        req: Any = pb.BulkDetailsRequest()
+        req.docid.extend(app_ids)
+        req.includeChildDocs = True
+        resp = googlecurl.post(
+            "https://android.clients.google.com/fdfe/bulkDetails",
+            data=req.SerializeToString(),
             headers=self._get_common_headers(),
         )
         if resp.status_code != 200:
             raise RuntimeError(
-                f"Got status code {resp.status_code} from /fdfe/details endpoint"
+                f"Got status code {resp.status_code} from /fdfe/bulkDetails endpoint"
             )
         resp_msg: Any = pb.ResponseWrapper()
         resp_msg.ParseFromString(resp.content)
-        doc = resp_msg.payload.detailsResponse.docV2
-        return DetailApp(
-            id=doc.details.appDetails.packageName,
-            version_code=doc.details.appDetails.versionCode,
-            version_string=doc.details.appDetails.versionString,
-            offer_type=doc.offer[0].offerType,
-        )
+        results = {}
+        for entry in resp_msg.payload.bulkDetailsResponse.entry:
+            doc = entry.doc
+            app = DetailApp(
+                id=doc.details.appDetails.packageName,
+                version_code=doc.details.appDetails.versionCode,
+                version_string=doc.details.appDetails.versionString,
+                offer_type=doc.offer[0].offerType,
+            )
+            results[app.id] = app
+        return results
