@@ -106,6 +106,7 @@ class DetailApp:
     version_code: str
     version_string: str
     offer_type: str
+    free: bool
 
 
 @dataclass
@@ -346,9 +347,25 @@ class GooglePlay:
                 version_code=doc.details.appDetails.versionCode,
                 version_string=doc.details.appDetails.versionString,
                 offer_type=doc.offer[0].offerType,
+                free=doc.offer[0].micros == 0,
             )
             results[app.id] = app
         return results
+
+    def _purchase(self, app: DetailApp):
+        resp = googlecurl.post(
+            "https://android.clients.google.com/fdfe/purchase",
+            params={
+                "doc": app.id,
+                "vc": app.version_code,
+                "ot": app.offer_type,
+            },
+            headers=self._get_common_headers(),
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"Got status code {resp.status_code} from /fdfe/delivery endpoint"
+            )
 
     def get_download_link(self, app: DetailApp):
         resp = googlecurl.get(
@@ -367,6 +384,8 @@ class GooglePlay:
         resp_msg: Any = pb.ResponseWrapper()
         resp_msg.ParseFromString(resp.content)
         data = resp_msg.payload.deliveryResponse.appDeliveryData
+        if not data.downloadSize:
+            raise RuntimeError(f"app {app.id} needs to be purchased before download")
         return DownloadLink(
             apk_gz_url=data.downloadUrlGzipped,
             apk_gz_bytes=data.downloadSizeGzipped,
