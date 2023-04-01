@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "dontbeevilmirror"
+version = "0.1.0"
+description = "Anonymous pull-through caching server for Google Play APKs"
+authors = ["Radian LLC <ops+dontbeevilmirror@radian.codes>"]
+readme = "../README.md"
+packages = [
+  { include = "dontbeevilmirror" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^2.2.3"
+gunicorn = "^20.1.0"
+
+[tool.poetry.group.local.dependencies]
+gplayapi = {path = "../gplayapi", develop = true}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
