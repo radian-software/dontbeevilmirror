@@ -12,6 +12,7 @@ packages = [
 python = "^3.10"
 flask = "^2.2.3"
 gunicorn = "^20.1.0"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.group.local.dependencies]
 gplayapi = {path = "../gplayapi", develop = true}

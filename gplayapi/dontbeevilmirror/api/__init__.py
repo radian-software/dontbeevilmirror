@@ -1,3 +1,8 @@
+"""
+Entrypoint to this module is creating a GooglePlay object and calling
+methods on it.
+"""
+
 import base64
 from dataclasses import dataclass
 import datetime
@@ -84,6 +89,14 @@ class CheckinInfo:
 
 
 @dataclass
+class Credentials:
+
+    initial_auth: InitialAuthInfo
+    auth: AuthInfo
+    checkin: CheckinInfo
+
+
+@dataclass
 class SearchApp:
 
     id: str
@@ -119,8 +132,22 @@ class DownloadLink:
 
 
 class GooglePlay:
+    """
+    Google Play Store API client. You can provide email and password
+    to login, then you get back persistent credentials that can be
+    saved and restored later. Then you can search for apps, get
+    details about them, and download them.
+
+    All properties on the class are considered private except for the
+    non-underscored methods.
+
+    A surprising thing about this client is that all methods require
+    authentication except for search, which is anonymous.
+    """
+
     email: str
     password: str
+    initial_auth_info: InitialAuthInfo
     auth_info: AuthInfo
     checkin_info: CheckinInfo
 
@@ -285,7 +312,58 @@ class GooglePlay:
                 f"Got status code {resp.status_code} from /checkin endpoint"
             )
 
-    def search(self, query: str):
+    def perform_initial_login(self, email, password) -> None:
+        """
+        Given an email and password, login to Google Play Store. Any
+        existing authentication info is discarded. Raise an exception
+        if login doesn't work. If it does work, you probably want to
+        call get_credentials next so that you can save the creds for
+        next time. Email and password are not saved.
+        """
+        try:
+            self.email = email
+            self.password = password
+            self._do_initial_auth()
+            self._do_auth()
+            self._do_checkin()
+            self._do_upload_device_config()
+        finally:
+            del self.email
+            del self.password
+
+    def get_credentials(self) -> Credentials:
+        """
+        Return a dataclass with persistent credentials. You can pass
+        these to set_credentials later to restore the authenticated
+        session without needing email and password.
+        """
+        return Credentials(
+            initial_auth=self.initial_auth_info,
+            auth=self.auth_info,
+            checkin=self.checkin_info,
+        )
+
+    def set_credentials(self, creds: Credentials) -> None:
+        """
+        Restore a previously authenticated session with credentials
+        that were returned from get_credentials. This doesn't check
+        the session is still valid so you need to call an API endpoint
+        to see if it works.
+        """
+        self.initial_auth_info = creds.initial_auth
+        self.auth_info = creds.auth
+        self.checkin_info = creds.checkin
+
+    def search(self, query: str) -> list[SearchApp]:
+        """
+        Search for apps. This doesn't require authentication to be
+        setup on the client. You provide a text string as would be
+        typed into the Play Store search bar and you get back a list
+        of SearchApp instances in the order they would appear in
+        search results. There is no support for pagination so if you
+        want more results you have to adjust your search query to be
+        more specific.
+        """
         resp = requests.get(
             "https://play.google.com/store/search",
             params={
@@ -320,10 +398,23 @@ class GooglePlay:
             )
         return apps
 
-    def get_details_single(self, app_id: str):
+    def get_details_single(self, app_id: str) -> DetailApp:
+        """
+        Get the details for a single app. The app_id is one of the ids
+        of a SearchApp that was returned from a search. If you need to
+        call this more than once, use get_details_multiple instead as
+        it's faster.
+        """
         return self.get_details_multiple(app_id)[app_id]
 
-    def get_details_multiple(self, *app_ids: str):
+    def get_details_multiple(self, *app_ids: str) -> dict[str, DetailApp]:
+        """
+        Get the details for multiple apps. This has about the same
+        performance of get_details_single. You give as many app ids
+        you want (from the ids of SearchApps that were returned from
+        one or more searches), and they are used as keys in the
+        returned dict whose values are DetailApps.
+        """
         # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L390-L397
         req: Any = pb.BulkDetailsRequest()
         req.docid.extend(app_ids)
@@ -353,6 +444,8 @@ class GooglePlay:
         return results
 
     def _purchase(self, app: DetailApp):
+        if not app.free:
+            raise RuntimeError(f"App {app.id} is not free and hence is not supported")
         resp = googlecurl.post(
             "https://android.clients.google.com/fdfe/purchase",
             params={
@@ -367,7 +460,7 @@ class GooglePlay:
                 f"Got status code {resp.status_code} from /fdfe/delivery endpoint"
             )
 
-    def get_download_link(self, app: DetailApp):
+    def _get_download_link(self, app: DetailApp):
         resp = googlecurl.get(
             "https://android.clients.google.com/fdfe/delivery",
             params={
@@ -392,3 +485,12 @@ class GooglePlay:
             apk_bytes=data.downloadSize,
             sha256_digest=data.sha256,
         )
+
+    def get_download(self, app: DetailApp) -> DownloadLink:
+        """
+        Given a DetailApp return a DownloadLink for it. This only
+        works for free apps since paid apps cannot be downloaded by
+        this client.
+        """
+        self._purchase(app)
+        return self._get_download_link(app)

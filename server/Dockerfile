@@ -1,3 +1,11 @@
+FROM golang:1.20 AS googlecurl
+
+WORKDIR /src
+COPY googlecurl/go.mod googlecurl/go.sum /src/
+RUN go mod download
+COPY googlecurl/main.go /src/
+RUN go build
+
 FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y tini && rm -rf /var/lib/apt/lists/*
@@ -18,6 +26,8 @@ RUN cd gplayapi && poetry install --no-root
 
 COPY server/pyproject.toml server/poetry.lock ./server/
 RUN cd server && poetry install --without=local --no-root
+
+COPY --from=googlecurl /src/googlecurl /usr/local/bin/
 
 COPY gplayapi/dontbeevilmirror/ ./gplayapi/dontbeevilmirror/
 RUN cd /src/gplayapi/dontbeevilmirror/api && protoc google_play.proto --python_out=.

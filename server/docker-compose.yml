@@ -16,3 +16,6 @@ services:
     ports:
       - "8080:8080"
     restart: always
+    environment:
+      GOOGLE_EMAIL: "${GOOGLE_EMAIL}"
+      GOOGLE_PASSWORD: "${GOOGLE_PASSWORD}"
