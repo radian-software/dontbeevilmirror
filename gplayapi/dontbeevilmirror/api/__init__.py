@@ -108,6 +108,15 @@ class DetailApp:
     offer_type: str
 
 
+@dataclass
+class DownloadLink:
+
+    apk_gz_url: str
+    apk_gz_bytes: int
+    apk_bytes: int
+    sha256_digest: str
+
+
 class GooglePlay:
     email: str
     password: str
@@ -310,7 +319,10 @@ class GooglePlay:
             )
         return apps
 
-    def get_details(self, *app_ids: list[str]):
+    def get_details_single(self, app_id: str):
+        return self.get_details_multiple(app_id)[app_id]
+
+    def get_details_multiple(self, *app_ids: str):
         # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L390-L397
         req: Any = pb.BulkDetailsRequest()
         req.docid.extend(app_ids)
@@ -337,3 +349,27 @@ class GooglePlay:
             )
             results[app.id] = app
         return results
+
+    def get_download_link(self, app: DetailApp):
+        resp = googlecurl.get(
+            "https://android.clients.google.com/fdfe/delivery",
+            params={
+                "doc": app.id,
+                "vc": app.version_code,
+                "ot": app.offer_type,
+            },
+            headers=self._get_common_headers(),
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"Got status code {resp.status_code} from /fdfe/delivery endpoint"
+            )
+        resp_msg: Any = pb.ResponseWrapper()
+        resp_msg.ParseFromString(resp.content)
+        data = resp_msg.payload.deliveryResponse.appDeliveryData
+        return DownloadLink(
+            apk_gz_url=data.downloadUrlGzipped,
+            apk_gz_bytes=data.downloadSizeGzipped,
+            apk_bytes=data.downloadSize,
+            sha256_digest=data.sha256,
+        )
