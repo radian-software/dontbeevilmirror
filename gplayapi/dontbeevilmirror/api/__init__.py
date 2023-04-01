@@ -84,7 +84,7 @@ class CheckinInfo:
 
 
 @dataclass
-class App:
+class SearchApp:
 
     id: str
     author: str
@@ -97,6 +97,15 @@ class App:
     screenshot_urls: list[str]
     free: bool
     price: str
+
+
+@dataclass
+class DetailApp:
+
+    id: str
+    version_code: str
+    version_string: str
+    offer_type: str
 
 
 class GooglePlay:
@@ -160,6 +169,23 @@ class GooglePlay:
             auth=info["Auth"], created=int(datetime.datetime.now().timestamp())
         )
 
+    def _populate_device_config(self, config):
+        config.touchScreen = 3
+        config.keyboard = 1
+        config.navigation = 1
+        config.screenLayout = 2
+        config.hasHardKeyboard = False
+        config.hasFiveWayNavigation = False
+        config.screenDensity = 480
+        config.glEsVersion = 196610
+        config.systemSharedLibrary.extend(constants.SYSTEM_SHARED_LIBRARIES)
+        config.systemAvailableFeature.extend(constants.SYSTEM_AVAILABLE_FEATURES)
+        config.nativePlatform.extend(["arm64-v8a", "armeabi-v7a", "armeabi"])
+        config.screenWidth = 1080
+        config.screenHeight = 2097
+        config.systemSupportedLocale.extend(constants.SYSTEM_SUPPORTED_LOCALES)
+        config.glExtension.extend(constants.GL_EXTENSIONS)
+
     # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/Utils.java#L176-L203
     def _get_checkin_request(self):
         req: Any = pb.AndroidCheckinRequest()
@@ -169,7 +195,7 @@ class GooglePlay:
         req.version = 3
         req.fragment = 0
         checkin = req.checkin
-        config = req.deviceConfiguration
+        self._populate_device_config(req.deviceConfiguration)
         checkin.lastCheckinMsec = 0
         checkin.cellOperator = "310260"
         checkin.simOperator = "310260"
@@ -192,22 +218,6 @@ class GooglePlay:
         build.manufacturer = "samsung"
         build.buildProduct = "r9qxeea"
         build.otaInstalled = False
-        config: Any = pb.DeviceConfigurationProto()
-        config.touchScreen = 3
-        config.keyboard = 1
-        config.navigation = 1
-        config.screenLayout = 2
-        config.hasHardKeyboard = False
-        config.hasFiveWayNavigation = False
-        config.screenDensity = 480
-        config.glEsVersion = 196610
-        config.systemSharedLibrary.extend(constants.SYSTEM_SHARED_LIBRARIES)
-        config.systemAvailableFeature.extend(constants.SYSTEM_AVAILABLE_FEATURES)
-        config.nativePlatform.extend(["arm64-v8a", "armeabi-v7a", "armeabi"])
-        config.screenWidth = 1080
-        config.screenHeight = 2097
-        config.systemSupportedLocale.extend(constants.SYSTEM_SUPPORTED_LOCALES)
-        config.glExtension.extend(constants.GL_EXTENSIONS)
         return req
 
     def _do_checkin(self):
@@ -222,7 +232,7 @@ class GooglePlay:
         )
         if resp.status_code != 200:
             raise RuntimeError(
-                f"Got status code {resp.status_code} from /auth endpoint"
+                f"Got status code {resp.status_code} from /checkin endpoint"
             )
         resp_msg: Any = pb.AndroidCheckinResponse()
         resp_msg.ParseFromString(resp.content)
@@ -232,6 +242,38 @@ class GooglePlay:
             consistency_token=resp_msg.deviceCheckinConsistencyToken,
             created=int(datetime.datetime.now().timestamp()),
         )
+
+    def _get_common_headers(self):
+        return {
+            "Accept-Language": "en-EN",
+            "Authorization": f"GoogleLogin auth={self.auth_info.auth}",
+            "X-DFE-Enabled-Experiments": "cl:billing.select_add_instrument_by_default",
+            "X-DFE-Unsupported-Experiments": "nocache:billing.use_charging_poller,market_emails,buyer_currency,prod_baseline,checkin.set_asset_paid_app_field,shekel_test,content_ratings,buyer_currency_in_app,nocache:encrypted_apk,recent_changes",
+            "X-DFE-Device-Id": self.checkin_info.android_id,
+            "X-DFE-Client-Id": "am-android-google",
+            # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L154
+            "User-Agent": "Android-Finsky/30.2.18-21 (api=3,versionCode=83021810,sdk=31,device=r9q,hardware=qcom,product=r9qxeea,platformVersionRelease=12,model=SM-G990B,buildId=SP1A.210812.016)",
+            "X-DFE-SmallestScreenWidthDp": "320",
+            "X-DFE-Filter-Level": "3",
+        }
+
+    def _do_upload_device_config(self):
+        # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L585-L590
+        req: Any = pb.UploadDeviceConfigRequest()
+        self._populate_device_config(req.deviceConfiguration)
+        req.manufacturer = "Samsung"
+        resp = googlecurl.post(
+            "https://android.clients.google.com/fdfe/uploadDeviceConfig",
+            data=req.SerializeToString(),
+            headers={
+                **self._get_common_headers(),
+                "Content-Type": "application/x-protobuf",
+            },
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"Got status code {resp.status_code} from /checkin endpoint"
+            )
 
     def search(self, query):
         resp = requests.get(
@@ -252,7 +294,7 @@ class GooglePlay:
         for entry in toplevel:
             entry = entry[0]
             apps.append(
-                App(
+                SearchApp(
                     id=entry[0][0],
                     icon_url=entry[1][3][2],
                     screenshot_urls=[x[3][2] for x in entry[2]],
@@ -267,3 +309,26 @@ class GooglePlay:
                 )
             )
         return apps
+
+    def details(self, app_id):
+        # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L754-L772
+        resp = googlecurl.get(
+            "https://android.clients.google.com/fdfe/details",
+            params={
+                "doc": app_id,
+            },
+            headers=self._get_common_headers(),
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"Got status code {resp.status_code} from /fdfe/details endpoint"
+            )
+        resp_msg: Any = pb.ResponseWrapper()
+        resp_msg.ParseFromString(resp.content)
+        doc = resp_msg.payload.detailsResponse.docV2
+        return DetailApp(
+            id=doc.details.appDetails.packageName,
+            version_code=doc.details.appDetails.versionCode,
+            version_string=doc.details.appDetails.versionString,
+            offer_type=doc.offer[0].offerType,
+        )

@@ -36,7 +36,7 @@ app = flask.Flask(__name__)
 def proxy(path):
     query = ""
     if flask.request.query_string:
-        query = "?" + str(flask.request.query_string)
+        query = "?" + flask.request.query_string.decode()
     body = flask.request.get_data()
     print(f"{flask.request.method.upper()} https://{args.upstream}/{path}{query}")
     print(f"REQ BODY ({len(body)} chars): {body}")
