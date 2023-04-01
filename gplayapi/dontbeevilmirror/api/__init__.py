@@ -71,12 +71,20 @@ class InitialAuthInfo:
     token: str
     created: int
 
+    @classmethod
+    def fromdict(cls, d: dict):
+        return cls(**d)
+
 
 @dataclass
 class AuthInfo:
 
     auth: str
     created: int
+
+    @classmethod
+    def fromdict(cls, d: dict):
+        return cls(**d)
 
 
 @dataclass
@@ -87,6 +95,10 @@ class CheckinInfo:
     consistency_token: str
     created: int
 
+    @classmethod
+    def fromdict(cls, d: dict):
+        return cls(**d)
+
 
 @dataclass
 class Credentials:
@@ -94,6 +106,14 @@ class Credentials:
     initial_auth: InitialAuthInfo
     auth: AuthInfo
     checkin: CheckinInfo
+
+    @classmethod
+    def fromdict(cls, d: dict):
+        return cls(
+            initial_auth=InitialAuthInfo.fromdict(d["initial_auth"]),
+            auth=AuthInfo.fromdict(d["auth"]),
+            checkin=CheckinInfo.fromdict(d["checkin"]),
+        )
 
 
 @dataclass

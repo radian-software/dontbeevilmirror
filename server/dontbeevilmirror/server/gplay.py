@@ -11,6 +11,8 @@ class GooglePlayWrapper:
         self.password = password
         self.gplay = GooglePlay()
         self.search_ratelimit = threading.BoundedSemaphore(5)
+        self.auth_currently_working = False
+        self.auth_needs_recheck = True
 
     def maintain_authentication(self):
         while True:
