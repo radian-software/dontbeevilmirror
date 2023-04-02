@@ -11,8 +11,6 @@ from dontbeevilmirror.server.gplay import GooglePlayWrapper
 app = flask.Flask(__name__)
 gplay = GooglePlayWrapper(os.environ["GOOGLE_EMAIL"], os.environ["GOOGLE_PASSWORD"])
 
-from dontbeevilmirror.server import logging
-
 if os.environ.get("ENABLE_AUTHENTICATION_LOOP") == "1":
     threading.Thread(
         name="authentication", target=gplay.maintain_authentication, daemon=True

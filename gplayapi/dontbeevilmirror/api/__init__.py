@@ -130,6 +130,7 @@ class SearchApp:
     screenshot_urls: list[str]
     free: bool
     price: str
+    created: datetime.datetime
 
 
 @dataclass
@@ -140,6 +141,18 @@ class DetailApp:
     version_string: str
     offer_type: str
     free: bool
+    created: datetime.datetime
+
+    def __eq__(self, other):
+        if not isinstance(other, DetailApp):
+            return False
+        return (
+            self.id == other.id
+            and self.version_code == other.version_code
+            and self.version_string == other.version_string
+            and self.offer_type == other.offer_type
+            and self.free == other.free
+        )
 
 
 @dataclass
@@ -149,6 +162,7 @@ class DownloadLink:
     apk_gz_bytes: int
     apk_bytes: int
     sha256_digest: str
+    created: datetime.datetime
 
 
 class GooglePlay:
@@ -375,6 +389,9 @@ class GooglePlay:
         self.checkin_info = creds.checkin
 
     def clear_credentials(self) -> None:
+        """
+        Delete any saved credentials from the client.
+        """
         try:
             del self.initial_auth_info
             del self.auth_info
@@ -383,6 +400,11 @@ class GooglePlay:
             pass
 
     def has_credentials(self) -> bool:
+        """
+        Return true if credentials are set in the client. This doesn't
+        check whether the credentials are still working or valid, see
+        check_authentication for that.
+        """
         return (
             hasattr(self, "initial_auth_info")
             and hasattr(self, "auth_info")
@@ -399,6 +421,7 @@ class GooglePlay:
         want more results you have to adjust your search query to be
         more specific.
         """
+        ts = datetime.datetime.now()
         resp = requests.get(
             "https://play.google.com/store/search",
             params={
@@ -429,6 +452,7 @@ class GooglePlay:
                     description=entry[13][1],
                     author=entry[14],
                     downloads=entry[15],
+                    created=ts,
                 )
             )
         return apps
@@ -450,6 +474,7 @@ class GooglePlay:
         one or more searches), and they are used as keys in the
         returned dict whose values are DetailApps.
         """
+        ts = datetime.datetime.now()
         # https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0b4d538692f4/src/main/java/com/akdeniz/googleplaycrawler/GooglePlayAPI.java#L390-L397
         req: Any = pb.BulkDetailsRequest()
         req.docid.extend(app_ids)
@@ -474,6 +499,7 @@ class GooglePlay:
                 version_string=doc.details.appDetails.versionString,
                 offer_type=doc.offer[0].offerType,
                 free=doc.offer[0].micros == 0,
+                created=ts,
             )
             results[app.id] = app
         return results
@@ -496,6 +522,7 @@ class GooglePlay:
             )
 
     def _get_download_link(self, app: DetailApp):
+        ts = datetime.datetime.now()
         resp = googlecurl.get(
             "https://android.clients.google.com/fdfe/delivery",
             params={
@@ -519,6 +546,7 @@ class GooglePlay:
             apk_gz_bytes=data.downloadSizeGzipped,
             apk_bytes=data.downloadSize,
             sha256_digest=data.sha256,
+            created=ts,
         )
 
     def get_download(self, app: DetailApp) -> DownloadLink:

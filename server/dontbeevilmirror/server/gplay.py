@@ -2,10 +2,14 @@ import datetime
 import threading
 import time
 
-from dontbeevilmirror.api import GooglePlay, SearchApp
+from dontbeevilmirror.api import DetailApp, GooglePlay, SearchApp
 from dontbeevilmirror.server import db
 from dontbeevilmirror.server import logging
 from dontbeevilmirror.server.util import now, rate_limit_with_timeout
+
+
+class AuthenticationOfflineError(Exception):
+    pass
 
 
 class GooglePlayWrapper:
@@ -18,6 +22,7 @@ class GooglePlayWrapper:
         self.password = password
         self.gplay = GooglePlay()
         self.search_ratelimit = threading.BoundedSemaphore(5)
+        self.details_ratelimit = threading.BoundedSemaphore(3)
         self.auth_currently_working = False
         self.auth_needs_recheck = True
         self.login_allowed_after = datetime.datetime.fromtimestamp(0)
@@ -170,3 +175,24 @@ class GooglePlayWrapper:
     def search(self, query: str) -> list[SearchApp]:
         with rate_limit_with_timeout(self.search_ratelimit, timeout_seconds=10):
             return self.gplay.search(query)
+
+    def details(self, *app_ids: str) -> dict[str, DetailApp]:
+        if not self.auth_currently_working:
+            raise AuthenticationOfflineError
+        with db.cursor() as curs:
+            known_apps = {}
+            unknown_app_ids = set()
+            cached_apps = db.get_details(curs, *app_ids)
+            for app_id, app in cached_apps.items():
+                if app and now() < app.created + datetime.timedelta(hours=1):
+                    known_apps[app_id] = app
+                else:
+                    unknown_app_ids.add(app_id)
+        if unknown_app_ids:
+            with rate_limit_with_timeout(self.details_ratelimit, timeout_seconds=10):
+                new_apps = self.gplay.get_details_multiple(*unknown_app_ids)
+            with db.cursor() as curs:
+                db.set_details(curs, *new_apps.values())
+        else:
+            new_apps = {}
+        return {**known_apps, **new_apps}

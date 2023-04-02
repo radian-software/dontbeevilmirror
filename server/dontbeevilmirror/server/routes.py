@@ -4,7 +4,8 @@ import flask
 import flask_limiter
 from flask_limiter.util import get_remote_address
 
-from dontbeevilmirror.server import app, gplay
+from dontbeevilmirror.server import app, gplay, logging
+from dontbeevilmirror.server.gplay import AuthenticationOfflineError
 from dontbeevilmirror.server.util import TimeoutDueToRateLimit
 
 
@@ -32,3 +33,29 @@ def search():
     except TimeoutDueToRateLimit:
         return "Too many requests", 503
     return flask.jsonify([dataclasses.asdict(app) for app in resp])
+
+
+@app.route("/api/v0/details", methods=["POST"])
+@details_limit
+def details():
+    app_ids = flask.request.args.getlist("app")
+    if not app_ids:
+        return "No app ID(s) provided", 422
+    try:
+        resp = gplay.details(*app_ids)
+    except TimeoutDueToRateLimit:
+        return "Too many requests", 503
+    except AuthenticationOfflineError:
+        return "Server authentication currently offline", 503
+    except Exception as e:
+        gplay.auth_needs_recheck = True
+        logging.error(
+            "Got error on details request",
+            extra={
+                "error": repr(e),
+            },
+        )
+        return "Got unexpected error", 500
+    return flask.jsonify(
+        {app_id: dataclasses.asdict(app) for app_id, app in resp.items()}
+    )
