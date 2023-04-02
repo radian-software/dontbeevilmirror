@@ -3,4 +3,6 @@
 set -euo pipefail
 
 dbmate up
-exec gunicorn -b0.0.0.0:8080 dontbeevilmirror.server:app
+
+export PYTHONUNBUFFERED=1
+exec gunicorn -b0.0.0.0:8080 -R --access-logfile=- dontbeevilmirror.server:app

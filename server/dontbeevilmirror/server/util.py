@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import datetime
 import threading
 
 
@@ -15,3 +16,11 @@ def rate_limit_with_timeout(ratelimit: threading.Semaphore, timeout_seconds: flo
             raise TimeoutDueToRateLimit
     finally:
         ratelimit.release()
+
+
+def strftime(dt: datetime.datetime):
+    return dt.strftime("%Y-%m-%d %H:%M:%S.%f %Z")
+
+
+def now(tz: datetime.timezone | None = None) -> datetime.datetime:
+    return datetime.datetime.now(tz)

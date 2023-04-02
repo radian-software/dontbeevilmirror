@@ -374,6 +374,21 @@ class GooglePlay:
         self.auth_info = creds.auth
         self.checkin_info = creds.checkin
 
+    def clear_credentials(self) -> None:
+        try:
+            del self.initial_auth_info
+            del self.auth_info
+            del self.checkin_info
+        except AttributeError:
+            pass
+
+    def has_credentials(self) -> bool:
+        return (
+            hasattr(self, "initial_auth_info")
+            and hasattr(self, "auth_info")
+            and hasattr(self, "checkin_info")
+        )
+
     def search(self, query: str) -> list[SearchApp]:
         """
         Search for apps. This doesn't require authentication to be
@@ -514,3 +529,22 @@ class GooglePlay:
         """
         self._purchase(app)
         return self._get_download_link(app)
+
+    def check_authentication(self):
+        """
+        Try to perform a simple request to make sure authentication is
+        valid. If things aren't working then an exception is raised.
+        """
+        resp = googlecurl.get(
+            "https://android.clients.google.com/fdfe/search",
+            params={
+                "c": "3",
+                "q": "google",
+                "n": "1",
+            },
+            headers=self._get_common_headers(),
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"Got status code {resp.status_code} from /fdfe/search endpoint"
+            )

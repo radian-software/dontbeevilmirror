@@ -1,12 +1,13 @@
 from contextlib import contextmanager
 import dataclasses
-import datetime
+import json
 import os
 
 import psycopg2.extras
 import psycopg2.pool
 
 from dontbeevilmirror.api import Credentials
+from dontbeevilmirror.server.util import now
 
 database_url = os.environ["DATABASE_URL"]
 if "${POSTGRES_PASSWORD}" in database_url:
@@ -39,24 +40,20 @@ def cursor():
             yield curs
 
 
-def now() -> datetime.datetime:
-    return datetime.datetime.now()
-
-
 def set_credentials(curs, creds: Credentials):
     curs.execute(
         "INSERT INTO google_play_authentication (create_ts, format_version, auth_data) VALUES (%(create_ts)s, %(format_version)s, %(auth_data)s)",
         {
             "create_ts": now(),
             "format_version": 1,
-            "auth_data": dataclasses.asdict(creds),
+            "auth_data": json.dumps(dataclasses.asdict(creds)),
         },
     )
 
 
 def get_credentials(curs) -> Credentials | None:
     curs.execute(
-        "SELECT auth_data FROM google_play_authentication WHERE format_version = 1 ORDER BY create_ts DESC"
+        "SELECT auth_data FROM google_play_authentication WHERE format_version = 1 ORDER BY create_ts DESC LIMIT 1"
     )
     if obj := curs.fetchone():
         return Credentials.fromdict(obj["auth_data"])
