@@ -6,7 +6,13 @@ import os
 import psycopg2.extras
 import psycopg2.pool
 
-from dontbeevilmirror.api import Credentials, DetailApp
+from dontbeevilmirror.api import (
+    Credentials,
+    DetailApp,
+    DownloadLink,
+    MinimalDetailApp,
+    PathOnlyDownloadLink,
+)
 from dontbeevilmirror.server import logging
 from dontbeevilmirror.server.util import now
 
@@ -124,4 +130,58 @@ def set_details(curs, *apps: DetailApp, existing_apps=None) -> None:
             for app in nonmatching_apps
         ],
         "(%(create_ts)s, %(validate_ts)s, %(id)s, %(version_code)s, %(version_string)s, %(offer_type)s, %(free_app)s)",
+    )
+
+
+def get_download_links(
+    curs, *apps: MinimalDetailApp
+) -> dict[str, PathOnlyDownloadLink | None]:
+    curs.execute(
+        "SELECT app_detail.id, apk.create_ts, apk.object_gz_path, apk.object_gz_bytes, apk.object_bytes, apk.object_sha256_digest FROM apk INNER JOIN app_detail ON apk.app_detail_id = app_detail.id WHERE "
+        + " OR ".join(
+            curs.mogrify(
+                "app_detail.id = %(app_id)s AND app_detail.version_code = %(version_code)s AND app_detail.offer_type = %(offer_type)s",
+                {
+                    "app_id": app.id,
+                    "version_code": app.version_code,
+                    "offer_type": app.offer_type,
+                },
+            )
+            for app in apps
+        )
+    )
+    res = {}
+    for obj in curs.fetchall():
+        obj[obj["id"]] = PathOnlyDownloadLink(
+            apk_gz_url=obj["object_gz_path"],
+            apk_gz_bytes=obj["object_gz_bytes"],
+            apk_bytes=obj["object_bytes"],
+            sha256_digest=obj["object_sha256_digest"],
+            created=obj["created_ts"],
+        )
+    for app in apps:
+        res.setdefault(app.id, None)
+    return res
+
+
+def set_download_link(curs, app: MinimalDetailApp, info: PathOnlyDownloadLink) -> None:
+    curs.execute(
+        "SELECT uid FROM app_detail WHERE id = %(id)s AND version_code = %(version_code)s AND offer_type = %(offer_type)s",
+        {
+            "id": app.id,
+            "version_code": app.version_code,
+            "offer_type": app.offer_type,
+        },
+    )
+    app_record = curs.fetchone()
+    curs.execute(
+        "INSERT INTO apk (create_ts, app_detail_id, object_gz_path, object_gz_bytes, object_bytes, object_sha256_digest) VALUES (%(create_ts)s, %(app_detail_id)s, %(object_gz_path)s, %(object_gz_bytes)s, %(object_bytes)s, %(object_sha256_digest)s)",
+        {
+            "create_ts": info.created,
+            "app_detail_id": app_record["uid"],
+            "object_gz_path": info.apk_gz_url,
+            "object_gz_bytes": info.apk_gz_bytes,
+            "object_bytes": info.apk_bytes,
+            "object_sha256_digest": info.sha256_digest,
+        },
     )

@@ -4,7 +4,8 @@ import flask
 import flask_limiter
 from flask_limiter.util import get_remote_address
 
-from dontbeevilmirror.server import app, gplay, logging
+from dontbeevilmirror.api import MinimalDetailApp
+from dontbeevilmirror.server import app, copier_instance, db, gplay, logging
 from dontbeevilmirror.server.gplay import AuthenticationOfflineError
 from dontbeevilmirror.server.util import TimeoutDueToRateLimit
 
@@ -12,7 +13,11 @@ from dontbeevilmirror.server.util import TimeoutDueToRateLimit
 limiter = flask_limiter.Limiter(get_remote_address, app=app, storage_uri="memory://")
 search_limit = limiter.shared_limit("5/second;60/minute;720/hour", scope="search")
 details_limit = limiter.shared_limit("3/second;20/minute;120/hour", scope="details")
-download_limit = limiter.shared_limit("2/second;10/minute;30/hour", scope="download")
+download_limit = limiter.shared_limit("5/second;360/minute;3600/hour", scope="download")
+acquire_limit = limiter.shared_limit("2/second;10/minute;30/hour", scope="acquire")
+acquire_status_limit = limiter.shared_limit(
+    "2/second;60/minute;120/hour", scope="acquire_status"
+)
 
 
 @app.route("/")
@@ -42,7 +47,7 @@ def details():
     if not app_ids:
         return "No app ID(s) provided", 422
     try:
-        resp = gplay.details(*app_ids)
+        resp = gplay.get_details(*app_ids)
     except TimeoutDueToRateLimit:
         return "Too many requests", 503
     except AuthenticationOfflineError:
@@ -59,3 +64,49 @@ def details():
     return flask.jsonify(
         {app_id: dataclasses.asdict(app) for app_id, app in resp.items()}
     )
+
+
+@app.route("/api/v0/download", methods=["POST"])
+@download_limit
+def download():
+    try:
+        apps = [MinimalDetailApp.fromdict(flask.request.json)]
+    except Exception:
+        return "Bad app info format provided", 422
+    if not apps:
+        return "Empty apps list provided", 422
+    if len(apps) > len(set(apps)):
+        return "Duplicate app ID(s) provided", 422
+    try:
+        resp = db.get_download_links(*apps)
+    except Exception as e:
+        logging.error(
+            "Got error on download request",
+            extra={
+                "error": repr(e),
+            },
+        )
+        return "Got unexpected error", 500
+    return flask.jsonify(
+        {
+            app_id: url
+            and dataclasses.asdict(url.with_full_url(copier_instance.url_prefix))
+            for app_id, url in resp.items()
+        }
+    )
+
+
+@app.route("/api/v0/acquire", methods=["POST"])
+@acquire_limit
+def acquire():
+    app_id = flask.request.args.get("app")
+    version_code = flask.request.args.get("version")
+    offer_type = flask.request.args.get("offer")
+    if not (app_id and version_code and offer_type):
+        return "Required parameters not provided", 422
+
+
+@app.route("/api/v0/acquire/status", methods=["POST"])
+@acquire_status_limit
+def acquire_status():
+    pass

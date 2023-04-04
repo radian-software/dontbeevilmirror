@@ -4,6 +4,7 @@ methods on it.
 """
 
 import base64
+import dataclasses
 from dataclasses import dataclass
 import datetime
 import json
@@ -134,12 +135,21 @@ class SearchApp:
 
 
 @dataclass
-class DetailApp:
+class MinimalDetailApp:
 
     id: str
     version_code: str
-    version_string: str
     offer_type: str
+
+    @classmethod
+    def fromdict(cls, d: dict):
+        return cls(**d)
+
+
+@dataclass
+class DetailApp(MinimalDetailApp):
+
+    version_string: str
     free: bool
     created: datetime.datetime
 
@@ -163,6 +173,25 @@ class DownloadLink:
     apk_bytes: int
     sha256_digest: str
     created: datetime.datetime
+
+
+@dataclass
+class URLDownloadLink(DownloadLink):
+    @property
+    def url_is_path_only(self):
+        return False
+
+
+@dataclass
+class PathOnlyDownloadLink(DownloadLink):
+    @property
+    def url_is_path_only(self):
+        return True
+
+    def with_full_url(self, prefix):
+        params = dataclasses.asdict(self)
+        params["apk_gz_url"] = prefix + params["apk_gz_url"]
+        return URLDownloadLink(**params)
 
 
 class GooglePlay:

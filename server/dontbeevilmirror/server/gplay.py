@@ -176,7 +176,7 @@ class GooglePlayWrapper:
         with rate_limit_with_timeout(self.search_ratelimit, timeout_seconds=10):
             return self.gplay.search(query)
 
-    def details(self, *app_ids: str) -> dict[str, DetailApp]:
+    def get_details(self, *app_ids: str) -> dict[str, DetailApp]:
         if not self.auth_currently_working:
             raise AuthenticationOfflineError
         with db.cursor() as curs:
@@ -196,3 +196,6 @@ class GooglePlayWrapper:
         else:
             new_apps = {}
         return {**known_apps, **new_apps}
+
+    def get_object_paths(self, *apps: DetailApp) -> dict[str, str | None]:
+        pass

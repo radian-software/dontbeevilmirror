@@ -30,4 +30,6 @@ services:
       DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD}@db:5432/evil?sslmode=disable"
       GOOGLE_EMAIL: "${GOOGLE_EMAIL}"
       GOOGLE_PASSWORD: "${GOOGLE_PASSWORD}"
-      ENABLE_AUTHENTICATION_LOOP: "1"
+      ENABLE_BACKGROUND_JOBS: "1"
+    volumes:
+      - b2mock:/src/server/.b2mock
