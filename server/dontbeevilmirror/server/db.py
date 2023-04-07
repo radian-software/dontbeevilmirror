@@ -137,16 +137,18 @@ def get_download_links(
     curs, *apps: MinimalDetailApp
 ) -> dict[str, PathOnlyDownloadLink | None]:
     curs.execute(
-        "SELECT app_detail.id, apk.create_ts, apk.object_gz_path, apk.object_gz_bytes, apk.object_bytes, apk.object_sha256_digest FROM apk INNER JOIN app_detail ON apk.app_detail_id = app_detail.id WHERE "
+        "SELECT app_detail.id, apk.create_ts, apk.object_gz_path, apk.object_gz_bytes, apk.object_bytes, apk.object_sha256_digest FROM apk INNER JOIN app_detail ON apk.app_detail_id = app_detail.uid WHERE "
         + " OR ".join(
-            curs.mogrify(
-                "app_detail.id = %(app_id)s AND app_detail.version_code = %(version_code)s AND app_detail.offer_type = %(offer_type)s",
-                {
-                    "app_id": app.id,
-                    "version_code": app.version_code,
-                    "offer_type": app.offer_type,
-                },
-            )
+            (
+                curs.mogrify(
+                    "app_detail.id = %(app_id)s AND app_detail.version_code = %(version_code)s AND app_detail.offer_type = %(offer_type)s",
+                    {
+                        "app_id": app.id,
+                        "version_code": app.version_code,
+                        "offer_type": app.offer_type,
+                    },
+                )
+            ).decode()
             for app in apps
         )
     )

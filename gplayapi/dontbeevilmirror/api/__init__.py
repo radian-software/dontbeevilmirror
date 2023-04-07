@@ -134,7 +134,7 @@ class SearchApp:
     created: datetime.datetime
 
 
-@dataclass
+@dataclass(frozen=True)
 class MinimalDetailApp:
 
     id: str
@@ -146,7 +146,7 @@ class MinimalDetailApp:
         return cls(**d)
 
 
-@dataclass
+@dataclass(frozen=True)
 class DetailApp(MinimalDetailApp):
 
     version_string: str
@@ -180,6 +180,11 @@ class URLDownloadLink(DownloadLink):
     @property
     def url_is_path_only(self):
         return False
+
+    def with_path_only(self, path):
+        params = dataclasses.asdict(self)
+        params["apk_gz_url"] = path
+        return PathOnlyDownloadLink(**params)
 
 
 @dataclass
@@ -533,8 +538,8 @@ class GooglePlay:
             results[app.id] = app
         return results
 
-    def _purchase(self, app: DetailApp):
-        if not app.free:
+    def _purchase(self, app: MinimalDetailApp):
+        if isinstance(app, DetailApp) and not app.free:
             raise RuntimeError(f"App {app.id} is not free and hence is not supported")
         resp = googlecurl.post(
             "https://android.clients.google.com/fdfe/purchase",
@@ -550,7 +555,7 @@ class GooglePlay:
                 f"Got status code {resp.status_code} from /fdfe/delivery endpoint"
             )
 
-    def _get_download_link(self, app: DetailApp):
+    def _get_download_link(self, app: MinimalDetailApp):
         ts = datetime.datetime.now()
         resp = googlecurl.get(
             "https://android.clients.google.com/fdfe/delivery",
@@ -570,7 +575,7 @@ class GooglePlay:
         data = resp_msg.payload.deliveryResponse.appDeliveryData
         if not data.downloadSize:
             raise RuntimeError(f"app {app.id} needs to be purchased before download")
-        return DownloadLink(
+        return URLDownloadLink(
             apk_gz_url=data.downloadUrlGzipped,
             apk_gz_bytes=data.downloadSizeGzipped,
             apk_bytes=data.downloadSize,
@@ -578,7 +583,7 @@ class GooglePlay:
             created=ts,
         )
 
-    def get_download(self, app: DetailApp) -> DownloadLink:
+    def get_download(self, app: MinimalDetailApp) -> URLDownloadLink:
         """
         Given a DetailApp return a DownloadLink for it. This only
         works for free apps since paid apps cannot be downloaded by

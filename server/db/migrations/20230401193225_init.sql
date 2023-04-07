@@ -12,9 +12,9 @@ CREATE TABLE app_detail(
   create_ts TIMESTAMP NOT NULL,
   validate_ts TIMESTAMP NOT NULL,
   id TEXT NOT NULL,
-  version_code BIGINT NOT NULL,
+  version_code TEXT NOT NULL,
   version_string TEXT NOT NULL,
-  offer_type INT NOT NULL,
+  offer_type TEXT NOT NULL,
   free_app BOOLEAN NOT NULL
 );
 
@@ -30,6 +30,6 @@ CREATE TABLE apk(
 
 -- migrate:down
 
-DROP TABLE google_play_authentication;
-DROP TABLE app_details;
 DROP TABLE apk;
+DROP TABLE app_detail;
+DROP TABLE google_play_authentication;

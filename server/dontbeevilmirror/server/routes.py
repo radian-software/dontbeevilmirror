@@ -6,6 +6,7 @@ from flask_limiter.util import get_remote_address
 
 from dontbeevilmirror.api import MinimalDetailApp
 from dontbeevilmirror.server import app, copier_instance, db, gplay, logging
+from dontbeevilmirror.server.copier import NotAuthenticatedError, QueueFullError
 from dontbeevilmirror.server.gplay import AuthenticationOfflineError
 from dontbeevilmirror.server.util import TimeoutDueToRateLimit
 
@@ -104,9 +105,51 @@ def acquire():
     offer_type = flask.request.args.get("offer")
     if not (app_id and version_code and offer_type):
         return "Required parameters not provided", 422
+    try:
+        copier_instance.request_app(
+            MinimalDetailApp(
+                id=app_id, version_code=version_code, offer_type=offer_type
+            )
+        )
+    except QueueFullError:
+        return "Too many requests", 503
+    except NotAuthenticatedError:
+        return "Server authentication currently offline", 503
+    except Exception as e:
+        logging.error(
+            "Got error on acquire request",
+            extra={
+                "error": repr(e),
+            },
+        )
+        return "Got unexpected error", 500
+    return "", 204
 
 
 @app.route("/api/v0/acquire/status", methods=["POST"])
 @acquire_status_limit
 def acquire_status():
-    pass
+    app_id = flask.request.args.get("app")
+    version_code = flask.request.args.get("version")
+    offer_type = flask.request.args.get("offer")
+    if not (app_id and version_code and offer_type):
+        return "Required parameters not provided", 422
+    try:
+        status = copier_instance.get_app_status(
+            MinimalDetailApp(
+                id=app_id, version_code=version_code, offer_type=offer_type
+            )
+        )
+        return flask.jsonify(
+            {
+                "status": status,
+            }
+        )
+    except Exception as e:
+        logging.error(
+            "Got error on acquire status request",
+            extra={
+                "error": repr(e),
+            },
+        )
+        return "Got unexpected error", 500

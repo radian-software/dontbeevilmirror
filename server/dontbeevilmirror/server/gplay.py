@@ -2,7 +2,13 @@ import datetime
 import threading
 import time
 
-from dontbeevilmirror.api import DetailApp, GooglePlay, SearchApp
+from dontbeevilmirror.api import (
+    DetailApp,
+    GooglePlay,
+    MinimalDetailApp,
+    SearchApp,
+    URLDownloadLink,
+)
 from dontbeevilmirror.server import db
 from dontbeevilmirror.server import logging
 from dontbeevilmirror.server.util import now, rate_limit_with_timeout
@@ -197,5 +203,7 @@ class GooglePlayWrapper:
             new_apps = {}
         return {**known_apps, **new_apps}
 
-    def get_object_paths(self, *apps: DetailApp) -> dict[str, str | None]:
-        pass
+    def get_download_link(self, app: MinimalDetailApp) -> URLDownloadLink:
+        if not self.auth_currently_working:
+            raise AuthenticationOfflineError
+        return self.gplay.get_download(app)

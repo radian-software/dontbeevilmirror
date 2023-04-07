@@ -6,10 +6,14 @@ import dotenv
 
 dotenv.load_dotenv()
 
-from dontbeevilmirror.server.copier import APKCopier
 from dontbeevilmirror.server.gplay import GooglePlayWrapper
 
-app = flask.Flask(__name__)
+gplay_instance = GooglePlayWrapper(
+    os.environ["GOOGLE_EMAIL"], os.environ["GOOGLE_PASSWORD"]
+)
+
+from dontbeevilmirror.server.copier import APKCopier
+
 use_copier_mock = os.environ.get("B2_USE_MOCK") == "1"
 copier_instance = APKCopier(
     os.environ["B2_KEY_ID"],
@@ -18,15 +22,18 @@ copier_instance = APKCopier(
     url_base="file://" if use_copier_mock else os.environ["B2_URL_BASE"],
     use_mock=use_copier_mock,
 )
-gplay = GooglePlayWrapper(os.environ["GOOGLE_EMAIL"], os.environ["GOOGLE_PASSWORD"])
+
+app = flask.Flask(__name__)
 
 if os.environ.get("ENABLE_BACKGROUND_JOBS") == "1":
     threading.Thread(
-        name="gplay_authentication", target=gplay.maintain_authentication, daemon=True
+        name="gplay_authentication",
+        target=gplay_instance.maintain_authentication,
+        daemon=True,
     ).start()
     threading.Thread(
         name="b2_authentication",
-        target=copier_instance.maintain_authentication,
+        target=copier_instance.run_background_tasks,
         daemon=True,
     ).start()
 
