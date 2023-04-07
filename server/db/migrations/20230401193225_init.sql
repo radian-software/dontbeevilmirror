@@ -21,7 +21,9 @@ CREATE TABLE app_detail(
 CREATE TABLE apk(
   uid SERIAL PRIMARY KEY,
   create_ts TIMESTAMP NOT NULL,
-  app_detail_id INT REFERENCES app_detail(uid),
+  app_id TEXT NOT NULL,
+  version_code TEXT NOT NULL,
+  offer_type TEXT NOT NULL,
   object_gz_path TEXT NOT NULL,
   object_gz_bytes BIGINT NOT NULL,
   object_bytes BIGINT NOT NULL,

@@ -2,6 +2,7 @@
 *.key
 *.pyc
 *_pb2.py
+.b2
 .env
 __pycache__
 googlecurl/googlecurl

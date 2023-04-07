@@ -42,6 +42,7 @@ ENV PYTHONPATH=/src/server:/src/gplayapi
 
 RUN useradd -m -r -p! evil
 USER evil
+RUN mkdir /home/evil/.b2
 
 WORKDIR /src/server
 COPY server/start.sh ./

@@ -1,10 +1,12 @@
 import gzip
 import hashlib
+import os
 import pathlib
 from queue import Empty, Full, Queue
 import shutil
 import threading
 import time
+import traceback
 import uuid
 
 from b2sdk.v2 import B2Api, InMemoryAccountInfo
@@ -13,6 +15,9 @@ import requests
 from dontbeevilmirror.api import MinimalDetailApp, URLDownloadLink
 from dontbeevilmirror.server import db, gplay_instance, logging
 from dontbeevilmirror.server.b2mock import B2Mock
+
+
+B2_DIRECTORY = pathlib.Path(os.environ.get("B2_DIRECTORY", ".b2"))
 
 
 class NotAuthenticatedError(Exception):
@@ -33,7 +38,7 @@ class APKCopier:
         use_mock=False,
     ):
         if use_mock:
-            self.b2 = B2Mock()
+            self.b2 = B2Mock(B2_DIRECTORY / "files")
         else:
             self.b2 = B2Api(InMemoryAccountInfo())
         self.url_prefix = url_base + bucket_name + "/"
@@ -103,13 +108,19 @@ class APKCopier:
                         )
                         with self.apk_queue_lock:
                             self.apk_active_set.add(app)
-                        object_path = f"apks/{app.id}/${app.version_code}/${app.offer_type}/app.apk"
+                        object_path = f"apks/{app.id}/{app.version_code}/{app.offer_type}/app.apk.gz"
                         download = gplay_instance.get_download_link(app)
                         self._copy_apk(download, object_path)
                         with db.cursor() as curs:
                             db.set_download_link(
                                 curs, app, download.with_path_only(object_path)
                             )
+                        logging.info(
+                            "Downloaded app",
+                            extra={
+                                "app": app,
+                            },
+                        )
                     except Exception as e:
                         logging.warn(
                             "Failed to download app",
@@ -118,6 +129,7 @@ class APKCopier:
                                 "error": repr(e),
                             },
                         )
+                        traceback.print_exc()
                     finally:
                         self.apk_active_set.remove(app)
 
@@ -150,9 +162,9 @@ class APKCopier:
             return "unavailable"
 
     def _copy_apk(self, download_link: URLDownloadLink, object_path: str) -> None:
-        tmp = pathlib.Path(f".tmp-apk-{str(uuid.uuid4())}")
+        tmp = pathlib.Path(f"{B2_DIRECTORY}/.tmp-apk-{str(uuid.uuid4())}")
         try:
-            tmp.mkdir()
+            tmp.mkdir(parents=True)
             with requests.get(download_link.apk_gz_url, stream=True) as resp:
                 resp.raise_for_status()
                 with open(tmp / "app.apk.gz", "wb+") as gz:
@@ -169,4 +181,7 @@ class APKCopier:
                 tmp / "app.apk.gz", object_path, "application/gzip"
             )
         finally:
-            shutil.rmtree(tmp)
+            try:
+                shutil.rmtree(tmp)
+            except FileNotFoundError:
+                pass

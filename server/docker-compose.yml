@@ -1,7 +1,7 @@
 version: "3.9"
 volumes:
   pgdata: {}
-  b2mock: {}
+  b2: {}
 services:
   db:
     image: "postgres:15"
@@ -37,5 +37,6 @@ services:
       B2_BUCKET: "${B2_BUCKET}"
       B2_URL_BASE: "${B2_URL_BASE}"
       ENABLE_BACKGROUND_JOBS: "1"
+      B2_DIRECTORY: /home/evil/.b2
     volumes:
-      - b2mock:/src/server/.b2mock
+      - b2:/home/evil/.b2

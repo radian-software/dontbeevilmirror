@@ -4,6 +4,7 @@ methods on it.
 """
 
 import base64
+import binascii
 import dataclasses
 from dataclasses import dataclass
 import datetime
@@ -579,7 +580,9 @@ class GooglePlay:
             apk_gz_url=data.downloadUrlGzipped,
             apk_gz_bytes=data.downloadSizeGzipped,
             apk_bytes=data.downloadSize,
-            sha256_digest=data.sha256,
+            sha256_digest=binascii.hexlify(
+                base64.b64decode(data.sha256 + "==")
+            ).decode(),
             created=ts,
         )
 

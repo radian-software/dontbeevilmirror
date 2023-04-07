@@ -137,11 +137,11 @@ def get_download_links(
     curs, *apps: MinimalDetailApp
 ) -> dict[str, PathOnlyDownloadLink | None]:
     curs.execute(
-        "SELECT app_detail.id, apk.create_ts, apk.object_gz_path, apk.object_gz_bytes, apk.object_bytes, apk.object_sha256_digest FROM apk INNER JOIN app_detail ON apk.app_detail_id = app_detail.uid WHERE "
+        "SELECT create_ts, app_id, object_gz_path, object_gz_bytes, object_bytes, object_sha256_digest FROM apk WHERE "
         + " OR ".join(
             (
                 curs.mogrify(
-                    "app_detail.id = %(app_id)s AND app_detail.version_code = %(version_code)s AND app_detail.offer_type = %(offer_type)s",
+                    "app_id = %(app_id)s AND version_code = %(version_code)s AND offer_type = %(offer_type)s",
                     {
                         "app_id": app.id,
                         "version_code": app.version_code,
@@ -154,12 +154,12 @@ def get_download_links(
     )
     res = {}
     for obj in curs.fetchall():
-        obj[obj["id"]] = PathOnlyDownloadLink(
+        res[obj["app_id"]] = PathOnlyDownloadLink(
             apk_gz_url=obj["object_gz_path"],
             apk_gz_bytes=obj["object_gz_bytes"],
             apk_bytes=obj["object_bytes"],
             sha256_digest=obj["object_sha256_digest"],
-            created=obj["created_ts"],
+            created=obj["create_ts"],
         )
     for app in apps:
         res.setdefault(app.id, None)
@@ -168,19 +168,12 @@ def get_download_links(
 
 def set_download_link(curs, app: MinimalDetailApp, info: PathOnlyDownloadLink) -> None:
     curs.execute(
-        "SELECT uid FROM app_detail WHERE id = %(id)s AND version_code = %(version_code)s AND offer_type = %(offer_type)s",
-        {
-            "id": app.id,
-            "version_code": app.version_code,
-            "offer_type": app.offer_type,
-        },
-    )
-    app_record = curs.fetchone()
-    curs.execute(
-        "INSERT INTO apk (create_ts, app_detail_id, object_gz_path, object_gz_bytes, object_bytes, object_sha256_digest) VALUES (%(create_ts)s, %(app_detail_id)s, %(object_gz_path)s, %(object_gz_bytes)s, %(object_bytes)s, %(object_sha256_digest)s)",
+        "INSERT INTO apk (create_ts, app_id, version_code, offer_type, object_gz_path, object_gz_bytes, object_bytes, object_sha256_digest) VALUES (%(create_ts)s, %(app_id)s, %(version_code)s, %(offer_type)s, %(object_gz_path)s, %(object_gz_bytes)s, %(object_bytes)s, %(object_sha256_digest)s)",
         {
             "create_ts": info.created,
-            "app_detail_id": app_record["uid"],
+            "app_id": app.id,
+            "version_code": app.version_code,
+            "offer_type": app.offer_type,
             "object_gz_path": info.apk_gz_url,
             "object_gz_bytes": info.apk_gz_bytes,
             "object_bytes": info.apk_bytes,

@@ -71,7 +71,7 @@ def details():
 @download_limit
 def download():
     try:
-        apps = [MinimalDetailApp.fromdict(flask.request.json)]
+        apps = [MinimalDetailApp.fromdict(obj) for obj in list(flask.request.json)]
     except Exception:
         return "Bad app info format provided", 422
     if not apps:
@@ -79,7 +79,8 @@ def download():
     if len(apps) > len(set(apps)):
         return "Duplicate app ID(s) provided", 422
     try:
-        resp = db.get_download_links(*apps)
+        with db.cursor() as curs:
+            resp = db.get_download_links(curs, *apps)
     except Exception as e:
         logging.error(
             "Got error on download request",
@@ -100,9 +101,9 @@ def download():
 @app.route("/api/v0/acquire", methods=["POST"])
 @acquire_limit
 def acquire():
-    app_id = flask.request.args.get("app")
-    version_code = flask.request.args.get("version")
-    offer_type = flask.request.args.get("offer")
+    app_id = flask.request.args.get("app_id")
+    version_code = flask.request.args.get("version_code")
+    offer_type = flask.request.args.get("offer_type")
     if not (app_id and version_code and offer_type):
         return "Required parameters not provided", 422
     try:
@@ -129,9 +130,9 @@ def acquire():
 @app.route("/api/v0/acquire/status", methods=["POST"])
 @acquire_status_limit
 def acquire_status():
-    app_id = flask.request.args.get("app")
-    version_code = flask.request.args.get("version")
-    offer_type = flask.request.args.get("offer")
+    app_id = flask.request.args.get("app_id")
+    version_code = flask.request.args.get("version_code")
+    offer_type = flask.request.args.get("offer_type")
     if not (app_id and version_code and offer_type):
         return "Required parameters not provided", 422
     try:

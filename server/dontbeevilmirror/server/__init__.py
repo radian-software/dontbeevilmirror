@@ -12,14 +12,16 @@ gplay_instance = GooglePlayWrapper(
     os.environ["GOOGLE_EMAIL"], os.environ["GOOGLE_PASSWORD"]
 )
 
-from dontbeevilmirror.server.copier import APKCopier
+from dontbeevilmirror.server.copier import APKCopier, B2_DIRECTORY
 
 use_copier_mock = os.environ.get("B2_USE_MOCK") == "1"
 copier_instance = APKCopier(
     os.environ["B2_KEY_ID"],
     os.environ["B2_KEY_SECRET"],
     os.environ["B2_BUCKET"],
-    url_base="file://" if use_copier_mock else os.environ["B2_URL_BASE"],
+    url_base=f"file://{B2_DIRECTORY}/files"
+    if use_copier_mock
+    else os.environ["B2_URL_BASE"],
     use_mock=use_copier_mock,
 )
 
