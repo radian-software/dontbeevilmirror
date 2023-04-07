@@ -5,7 +5,13 @@ import flask_limiter
 from flask_limiter.util import get_remote_address
 
 from dontbeevilmirror.api import MinimalDetailApp
-from dontbeevilmirror.server import app, copier_instance, db, gplay, logging
+from dontbeevilmirror.server import (
+    app,
+    copier_instance,
+    db,
+    gplay_instance,
+    logging,
+)
 from dontbeevilmirror.server.copier import NotAuthenticatedError, QueueFullError
 from dontbeevilmirror.server.gplay import AuthenticationOfflineError
 from dontbeevilmirror.server.util import TimeoutDueToRateLimit
@@ -35,7 +41,7 @@ def search():
     if not query:
         return "No query provided", 422
     try:
-        resp = gplay.search(query)
+        resp = gplay_instance.search(query)
     except TimeoutDueToRateLimit:
         return "Too many requests", 503
     return flask.jsonify([dataclasses.asdict(app) for app in resp])
@@ -48,13 +54,13 @@ def details():
     if not app_ids:
         return "No app ID(s) provided", 422
     try:
-        resp = gplay.get_details(*app_ids)
+        resp = gplay_instance.get_details(*app_ids)
     except TimeoutDueToRateLimit:
         return "Too many requests", 503
     except AuthenticationOfflineError:
         return "Server authentication currently offline", 503
     except Exception as e:
-        gplay.auth_needs_recheck = True
+        gplay_instance.auth_needs_recheck = True
         logging.error(
             "Got error on details request",
             extra={
