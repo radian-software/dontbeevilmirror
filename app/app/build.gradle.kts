@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application") version "7.4.2"
+    id("org.jetbrains.kotlin.android") version "1.8.20"
 }
 
 repositories {
@@ -21,6 +22,11 @@ android {
         getByName("release") {
             isMinifyEnabled = false
         }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
