@@ -1,4 +1,4 @@
-rootProject.name = "dontbeevilapp"
+rootProject.name = "dontbeevil"
 include("app")
 
 pluginManagement {
