@@ -9,12 +9,12 @@ repositories {
 }
 
 android {
-    compileSdkVersion(32)
+    compileSdk = 32
     namespace = "codes.radian.dontbeevil"
     defaultConfig {
         applicationId = "codes.radian.dontbeevil"
-        minSdkVersion(16)
-        targetSdkVersion(32)
+        minSdk = 16
+        targetSdk = 32
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -31,7 +31,7 @@ android {
 }
 
 dependencies {
-    implementation("androidx.appcompat:appcompat:1.2.0")
-    implementation("com.google.android.material:material:1.2.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.0.4")
+    implementation("androidx.appcompat:appcompat:1.5.1")
+    implementation("com.google.android.material:material:1.8.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 }
