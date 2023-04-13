@@ -17,6 +17,54 @@ Google account that I have registered for the project. Furthermore,
 once an app is downloaded once, a copy is saved so that future
 downloads don't go to Google.
 
+## Local development
+
+To compile the googlecurl binary:
+
+* Install Go
+* Go into `googlecurl` and run `go build`
+
+To use the API library:
+
+* Install Poetry
+* Go into `gplayapi` and run `poetry install`
+* Make sure compiled googlecurl is on the PATH
+* Start a shell with `poetry run python`
+* `from dontbeevilmirror.api import GooglePlay, InitialAuthInfo,
+  AuthInfo, CheckinInfo, Credentials; g = GooglePlay()`
+* For initial login, `g.perform_initial_login(email, password)` and
+  then save the result of `g.get_credentials()`
+* For restoring session, `g.set_credentials(creds)`
+* API methods: `g.search(query)` (doesn't require auth),
+  `g.get_details_single(app_id)`, `g.get_details_multiple(*app_ids)`,
+  `g.get_download(app)`, `g.check_authentication()`
+
+To use the command-line tool:
+
+* Not finished yet
+
+To run the webserver:
+
+* Install Docker Compose
+* Go into `server` and copy `.env.sample` to `.env`
+* Fill in `GOOGLE_EMAIL` and `GOOGLE_PASSWORD`, generate a random
+  string for `POSTGRES_PASSWORD`, pick fake values for `B2_BUCKET` and
+  `B2_URL_BASE` (they don't matter if `B2_USE_MOCK=1`)
+* To use real B2, set `B2_USE_MOCK=0`, fill in `B2_KEY_ID` and
+  `B2_KEY_SECRET`, set `B2_BUCKET`, and set `B2_URL_BASE` to something
+  like `https://example.com/file/` where `example.com` is a CNAME to
+  your Backblaze CDN server
+* Run `docker-compose up`
+
+To compile the Android app:
+
+* Install JDK 17 and make it available (`JAVA_HOME` etc)
+* Install Android SDK 32 and make it available (`ANDROID_HOME` etc).
+  One way is with sdkmanager
+* Go into `app` and run `./gradlew build`
+* Compiled app is in `./app/build/outputs/apk/debug/app-debug.apk`
+* Install with `adb install`
+
 ## Credits
 
 The reverse-engineered logic for accessing the Google Play API was
