@@ -65,6 +65,55 @@ To compile the Android app:
 * Compiled app is in `./app/build/outputs/apk/debug/app-debug.apk`
 * Install with `adb install`
 
+## Deployment
+
+The current setup I have in production is a simple VPS on BuyVM,
+because that is very economical. I then have this systemd unit file
+installed at `/etc/systemd/system/dontbeevilmirror.service`:
+
+```
+[Unit]
+Description=dontbeevilmirror
+Requires=docker.service
+After=docker.service
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+[Service]
+Type=exec
+ExecStart=docker compose --file /opt/dontbeevilmirror/docker-compose.yml --env-file /opt/dontbeevilmirror/env up --abort-on-container-exit --no-build --pull=never
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+There is then an instance of Docker Registry running on the VPS. When
+I want to deploy, I build the Docker image locally and push it to the
+VPS registry. Then I ssh in, pull the image from the local registry,
+tag it as `dontbeevilmirror`, and restart the systemd service. It's
+pretty simple. The only other part is the `.env` file from my local
+machine needs to end up in `/opt/dontbeevilmirror/env` with the
+production credentials.
+
+As the server is HTTP only, I have Caddy set up with this
+`/etc/caddy/Caddyfile` to terminate TLS and obtain certs:
+
+```
+{
+    auto_https disable_redirects
+}
+
+dontbeevilmirror.example.com {
+    reverse_proxy localhost:8080
+}
+
+dontbeevilmirror.example.com:5443 {
+    reverse_proxy localhost:5000
+}
+```
+
 ## Credits
 
 The reverse-engineered logic for accessing the Google Play API was
