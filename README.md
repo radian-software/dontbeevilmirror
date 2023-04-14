@@ -76,9 +76,19 @@ License](https://github.com/onyxbits/raccoon4/blob/923610fe8fadb6d7426283d99a7b0
 Adaption to Python was aided by inspection of the code of
 [googleplay-api](https://github.com/marty0678/googleplay-api), which
 is provided under the terms of the [BSD License and GNU Public
-License](https://github.com/marty0678/googleplay-api/blob/master/LICENSE.md).
+License](https://github.com/marty0678/googleplay-api/blob/aa193ea198ac789f2b7d7a6650174078a93710a5/LICENSE.md).
 Note that no code is incorporated from this project, and copy-left
 provisions do not apply since, under U.S. law, implementations are not
 creative works and hence not copyrightable when they are the only
 possible way to accomplish the task at hand (e.g. satisfying Google
 authentication requirements).
+
+Some icons were taken from [Material
+Icons](https://github.com/google/material-design-icons), which is
+provided under the terms of the [Apache
+License](https://github.com/google/material-design-icons/blob/3912baecc97388955ce39f5e26bfb786a70cbe48/LICENSE).
+
+Some assets were taken from [Streamline
+Emoji](https://commons.wikimedia.org/wiki/File:095-pile-of-poo.svg),
+which is provided under the terms of the [CC-BY
+License](https://creativecommons.org/licenses/by/4.0/deed.en).
