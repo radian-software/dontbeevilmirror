@@ -470,9 +470,26 @@ class GooglePlay:
                 "Failed to locate AF_initDataCallback in Google Play search response"
             )
         data = json.loads(_jsonnet.evaluate_snippet("snippet", match.group(1)))
-        toplevel = data["data"][0][1][0][-1][0]
         apps = []
-        for entry in toplevel:
+        toplevel = data["data"][0][1]
+        first = toplevel[0][-1][-3]
+        apps.append(
+            SearchApp(
+                id=first[11][0][0],
+                icon_url=first[2][95][0][3][2],
+                screenshot_urls=[x[-1][2] for x in first[2][78][0]],
+                name=first[2][0][0],
+                rating=first[2][51][0][1],
+                category=first[2][79][0][0][0],
+                free=first[2][57][0][0][0][0][1][0][0] == 0,
+                price=first[2][57][0][0][0][0][1][0][2],
+                description=first[2][73][0][1],
+                author=first[2][68][0],
+                downloads=first[2][13][0],
+                created=ts,
+            )
+        )
+        for entry in toplevel[2][-1][0]:
             entry = entry[0]
             apps.append(
                 SearchApp(
