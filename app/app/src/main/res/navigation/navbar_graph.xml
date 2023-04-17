@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@id/navbar_search_dest"
+    >
+
+  <fragment
+      android:id="@+id/navbar_search_dest"
+      android:name="codes.radian.dontbeevil.SearchFragment"
+      android:label="fragment_search"
+      tools:layout="@layout/fragment_search"
+      />
+
+  <fragment
+      android:id="@+id/navbar_updates_dest"
+      android:name="codes.radian.dontbeevil.UpdatesFragment"
+      android:label="fragment_updates"
+      tools:layout="@layout/fragment_updates"
+      />
+
+  <fragment
+      android:id="@+id/navbar_settings_dest"
+      android:name="codes.radian.dontbeevil.SettingsFragment"
+      android:label="fragment_settings"
+      tools:layout="@layout/fragment_settings"
+      />
+
+</navigation>

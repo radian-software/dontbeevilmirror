@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
   <item
-      android:id="@+id/item_1"
+      android:id="@+id/navbar_search_dest"
       android:enabled="true"
       android:icon="@drawable/search"
       android:title="Search"/>
   <item
-      android:id="@+id/item_2"
+      android:id="@+id/navbar_updates_dest"
       android:enabled="true"
       android:icon="@drawable/updates"
       android:title="Updates"/>
   <item
-      android:id="@+id/item_3"
+      android:id="@+id/navbar_settings_dest"
       android:enabled="true"
       android:icon="@drawable/settings"
       android:title="Settings"/>
