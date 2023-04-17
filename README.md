@@ -114,7 +114,7 @@ dontbeevilmirror.example.com:5443 {
 }
 ```
 
-## Credits
+## Credits, acknowledgements, and licensing
 
 The reverse-engineered logic for accessing the Google Play API was
 determined by inspection of the code of
@@ -141,3 +141,17 @@ Some assets were taken from [Streamline
 Emoji](https://commons.wikimedia.org/wiki/File:095-pile-of-poo.svg),
 which is provided under the terms of the [CC-BY
 License](https://creativecommons.org/licenses/by/4.0/deed.en).
+
+Figuring out the correct XML files to display a navbar was helped by
+referencing
+[NavigationComponents-Tutorials](https://github.com/SmartToolFactory/NavigationComponents-Tutorials).
+An inquiry [has been
+made](https://github.com/SmartToolFactory/NavigationComponents-Tutorials/issues/7)
+about the licensing status of this code.
+
+Some debugging assistance on the more bullshit aspects of Android XML
+files was provided by [ChatGPT](https://openai.com/blog/chatgpt) by
+OpenAI. The licensing status of code provided by ChatGPT cannot be
+authoritatively determined, but the use cases exercised in this
+project were unlikely to provide any information that was not also
+available on Stack Overflow.
