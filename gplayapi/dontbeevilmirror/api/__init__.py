@@ -456,7 +456,7 @@ class GooglePlay:
             and hasattr(self, "checkin_info")
         )
 
-    def search(self, query: str) -> list[SearchApp]:
+    def search(self, query: str, _telemetry=None) -> list[SearchApp]:
         """
         Search for apps. This doesn't require authentication to be
         setup on the client. You provide a text string as would be
@@ -466,6 +466,8 @@ class GooglePlay:
         want more results you have to adjust your search query to be
         more specific.
         """
+        if not _telemetry:
+            _telemetry = lambda *_: None
         ts = datetime.datetime.now()
         resp = requests.get(
             "https://play.google.com/store/search",
@@ -474,32 +476,46 @@ class GooglePlay:
                 "c": "apps",
             },
         )
+        _telemetry("webpage", "html", resp.text)
         match = re.search(r"(?s).*AF_initDataCallback\((.+?)\);</script>", resp.text)
         if not match:
             raise RuntimeError(
                 "Failed to locate AF_initDataCallback in Google Play search response"
             )
         data = json.loads(_jsonnet.evaluate_snippet("snippet", match.group(1)))
+        _telemetry("initdata", "json", data)
         apps = []
         toplevel = data["data"][0][1]
-        first = toplevel[0][-1][-3]
-        apps.append(
-            SearchApp(
-                id=first[11][0][0],
-                icon_url=first[2][95][0][3][2],
-                screenshot_urls=[x[-1][2] for x in first[2][78][0]],
-                name=first[2][0][0],
-                rating=first[2][51][0][1],
-                category=first[2][79][0][0][0],
-                free=first[2][57][0][0][0][0][1][0][0] == 0,
-                price=first[2][57][0][0][0][0][1][0][2],
-                description=first[2][73][0][1],
-                author=first[2][68][0],
-                downloads=first[2][13][0],
-                created=ts,
+        with open("/tmp/toplevel.json", "w") as f:
+            json.dump(toplevel, f, indent=2)
+            f.write("\n")
+        if len(toplevel) >= 3:
+            first = toplevel[0][-1][-3]
+            rest = toplevel[2][-1][0]
+        else:
+            first = None
+            rest = toplevel[0][-1][0]
+        _telemetry("first_entry", "json", first)
+        _telemetry("rest_entries", "json", rest)
+        if first:
+            apps.append(
+                SearchApp(
+                    id=first[11][0][0],
+                    icon_url=first[2][95][0][3][2],
+                    screenshot_urls=[x[-1][2] for x in first[2][78][0]],
+                    name=first[2][0][0],
+                    rating=first[2][51][0][1],
+                    category=first[2][79][0][0][0],
+                    free=first[2][57][0][0][0][0][1][0][0] == 0,
+                    price=first[2][57][0][0][0][0][1][0][2],
+                    description=first[2][73][0][1],
+                    author=first[2][68][0],
+                    downloads=first[2][13][0],
+                    created=ts,
+                )
             )
-        )
-        for entry in toplevel[2][-1][0]:
+        for idx, entry in enumerate(rest):
+            _telemetry(f"entry_{idx}", "json", entry)
             entry = entry[0]
             apps.append(
                 SearchApp(
@@ -507,7 +523,7 @@ class GooglePlay:
                     icon_url=entry[1][3][2],
                     screenshot_urls=[x[3][2] for x in entry[2]],
                     name=entry[3],
-                    rating=entry[4][1],
+                    rating=entry[4] and entry[4][1],
                     category=entry[5],
                     free=entry[8][1][0][0] == 0,
                     price=entry[8][1][0][2],

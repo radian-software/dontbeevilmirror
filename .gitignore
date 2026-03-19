@@ -4,5 +4,6 @@
 *_pb2.py
 .b2
 .env
+.test_telemetry
 __pycache__
 googlecurl/googlecurl

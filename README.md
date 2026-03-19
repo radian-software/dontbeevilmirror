@@ -144,10 +144,9 @@ License](https://creativecommons.org/licenses/by/4.0/deed.en).
 
 Figuring out the correct XML files to display a navbar was helped by
 referencing
-[NavigationComponents-Tutorials](https://github.com/SmartToolFactory/NavigationComponents-Tutorials).
-An inquiry [has been
-made](https://github.com/SmartToolFactory/NavigationComponents-Tutorials/issues/7)
-about the licensing status of this code.
+[NavigationComponents-Tutorials](https://github.com/SmartToolFactory/NavigationComponents-Tutorials),
+which is provided under the terms of the [MIT
+License](https://github.com/SmartToolFactory/NavigationComponents-Tutorials/blob/ca8fc5227962560d84c641cbf3994ea36fb806c5/LICENSE.md).
 
 Some debugging assistance on the more bullshit aspects of Android XML
 files was provided by [ChatGPT](https://openai.com/blog/chatgpt) by
