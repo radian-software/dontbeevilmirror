@@ -146,6 +146,16 @@ class MinimalDetailApp:
     def fromdict(cls, d: dict):
         return cls(**d)
 
+    def is_valid(self):
+        return (
+            isinstance(self.id, str)
+            and isinstance(self.version_code, str)
+            and isinstance(self.offer_type, str)
+            and self.id
+            and self.version_code
+            and self.offer_type
+        )
+
 
 @dataclass(frozen=True)
 class DetailApp(MinimalDetailApp):
@@ -573,6 +583,9 @@ class GooglePlay:
                 f"Got status code {resp.status_code} from /fdfe/delivery endpoint"
             )
 
+    def _pad_malformed_base64(self, s):
+        return s + "=" * (-len(s) % 4)
+
     def _get_download_link(self, app: MinimalDetailApp):
         ts = datetime.datetime.now()
         resp = googlecurl.get(
@@ -598,7 +611,7 @@ class GooglePlay:
             apk_gz_bytes=data.downloadSizeGzipped,
             apk_bytes=data.downloadSize,
             sha256_digest=binascii.hexlify(
-                base64.b64decode(data.sha256 + "==")
+                base64.b64decode(self._pad_malformed_base64(data.sha256), b"-_")
             ).decode(),
             created=ts,
         )

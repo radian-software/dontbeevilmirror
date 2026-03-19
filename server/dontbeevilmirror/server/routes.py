@@ -37,7 +37,11 @@ def index():
 @app.route("/api/v0/search", methods=["POST"])
 @search_limit
 def search():
-    query = flask.request.args.get("query")
+    try:
+        query = flask.request.json.get("query")  # type: ignore
+        assert isinstance(query, str)
+    except Exception:
+        return "Bad or no json provided", 400
     if not query:
         return "No query provided", 422
     try:
@@ -50,7 +54,12 @@ def search():
 @app.route("/api/v0/details", methods=["POST"])
 @details_limit
 def details():
-    app_ids = flask.request.args.getlist("app")
+    try:
+        app_ids = flask.request.json.get("app_ids") or [flask.request.json["app_id"]]
+        assert isinstance(app_ids, list)
+        assert all(isinstance(app_id, str) for app_id in app_ids)
+    except Exception:
+        return "Bad or no json provided", 400
     if not app_ids:
         return "No app ID(s) provided", 422
     try:
@@ -77,9 +86,13 @@ def details():
 @download_limit
 def download():
     try:
-        apps = [MinimalDetailApp.fromdict(obj) for obj in list(flask.request.json)]
+        apps = flask.request.json
+        if not isinstance(apps, list):
+            apps = [apps]
+        apps = [MinimalDetailApp.fromdict(app) for app in apps]
+        assert all(app.is_valid() for app in apps)
     except Exception:
-        return "Bad app info format provided", 422
+        return "Bad or no json provided", 400
     if not apps:
         return "Empty apps list provided", 422
     if len(apps) > len(set(apps)):
@@ -107,17 +120,13 @@ def download():
 @app.route("/api/v0/acquire", methods=["POST"])
 @acquire_limit
 def acquire():
-    app_id = flask.request.args.get("app_id")
-    version_code = flask.request.args.get("version_code")
-    offer_type = flask.request.args.get("offer_type")
-    if not (app_id and version_code and offer_type):
-        return "Required parameters not provided", 422
     try:
-        copier_instance.request_app(
-            MinimalDetailApp(
-                id=app_id, version_code=version_code, offer_type=offer_type
-            )
-        )
+        app = MinimalDetailApp.fromdict(flask.request.json)
+        assert app.is_valid()
+    except Exception:
+        return "Bad or no json provided", 400
+    try:
+        copier_instance.request_app(app)
     except QueueFullError:
         return "Too many requests", 503
     except NotAuthenticatedError:
@@ -136,17 +145,13 @@ def acquire():
 @app.route("/api/v0/acquire/status", methods=["POST"])
 @acquire_status_limit
 def acquire_status():
-    app_id = flask.request.args.get("app_id")
-    version_code = flask.request.args.get("version_code")
-    offer_type = flask.request.args.get("offer_type")
-    if not (app_id and version_code and offer_type):
-        return "Required parameters not provided", 422
     try:
-        status = copier_instance.get_app_status(
-            MinimalDetailApp(
-                id=app_id, version_code=version_code, offer_type=offer_type
-            )
-        )
+        app = MinimalDetailApp.fromdict(flask.request.json)
+        assert app.is_valid()
+    except Exception:
+        return "Bad or no json provided", 400
+    try:
+        status = copier_instance.get_app_status(app)
         return flask.jsonify(
             {
                 "status": status,
