@@ -17,6 +17,8 @@ Google account that I have registered for the project. Furthermore,
 once an app is downloaded once, a copy is saved so that future
 downloads don't go to Google.
 
+(This project is heavily unfinished.)
+
 ## Local development
 
 To compile the googlecurl binary:
